@@ -1,0 +1,1660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FarmIQ · Live satellite data for SA farmers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    --earth: #2C3A1E;
+    --earth-mid: #3D5229;
+    --sage: #7A9E5F;
+    --sage-light: #A8C48A;
+    --straw: #E8D5A0;
+    --straw-pale: #F5EDD6;
+    --sky: #B8D4E8;
+    --rust: #C0612B;
+    --rust-light: #E07A44;
+    --cream: #FAF7F0;
+    --ink: #1A2210;
+    --mist: #EDF2E8;
+    --gold: #D4A017;
+    --gold-light: #F0C840;
+    --score-high: #4A8C3F;
+    --score-mid: #B8960C;
+    --score-low: #C05030;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--cream);
+    color: var(--ink);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ─── NAV ─────────────────────────────────────────── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    background: rgba(44, 58, 30, 0.97);
+    backdrop-filter: blur(12px);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2.5rem;
+    height: 64px;
+    border-bottom: 1px solid rgba(168,196,138,0.2);
+  }
+  .nav-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem; font-weight: 900;
+    color: var(--straw);
+    letter-spacing: -0.02em;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .nav-logo span { color: var(--sage-light); }
+  .nav-badge {
+    font-size: 0.65rem; font-weight: 500; letter-spacing: 0.08em;
+    background: rgba(122,158,95,0.25); color: var(--sage-light);
+    border: 1px solid rgba(122,158,95,0.4);
+    padding: 0.2rem 0.6rem; border-radius: 20px;
+    text-transform: uppercase;
+  }
+  .nav-right { display: flex; align-items: center; gap: 1.5rem; }
+  .nav-link { color: rgba(232,213,160,0.7); font-size: 0.875rem; text-decoration: none; transition: color .2s; }
+  .nav-link:hover { color: var(--straw); }
+
+  /* ─── HERO ─────────────────────────────────────────── */
+  .hero {
+    min-height: 100vh;
+    background: var(--earth);
+    background-image:
+      radial-gradient(ellipse 80% 60% at 50% 0%, rgba(122,158,95,0.18) 0%, transparent 70%),
+      url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%237a9e5f' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center;
+    padding: 7rem 1.5rem 5rem;
+    position: relative; overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 20% 80%, rgba(192,97,43,0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(212,160,23,0.06) 0%, transparent 50%);
+  }
+
+  .hero-eyebrow {
+    display: flex; align-items: center; gap: 0.75rem;
+    background: rgba(122,158,95,0.15);
+    border: 1px solid rgba(122,158,95,0.35);
+    border-radius: 100px;
+    padding: 0.4rem 1.1rem;
+    font-size: 0.8rem; font-weight: 500; letter-spacing: 0.05em;
+    color: var(--sage-light); text-transform: uppercase;
+    margin-bottom: 2.5rem;
+    animation: fadeUp 0.6s ease both;
+  }
+  .hero-eyebrow .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--sage-light);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(0.7)} }
+
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(3rem, 8vw, 6.5rem);
+    font-weight: 900; line-height: 1.0;
+    color: var(--straw);
+    letter-spacing: -0.03em;
+    max-width: 800px;
+    margin-bottom: 1.5rem;
+    animation: fadeUp 0.6s 0.1s ease both;
+  }
+  .hero h1 em { color: var(--sage-light); font-style: normal; }
+
+  .hero-sub {
+    font-size: 1.2rem; font-weight: 300;
+    color: rgba(232,213,160,0.75);
+    max-width: 520px; line-height: 1.7;
+    margin-bottom: 2.5rem;
+    animation: fadeUp 0.6s 0.2s ease both;
+  }
+
+  .hero-cta-group {
+    display: flex; flex-direction: column; align-items: center; gap: 1rem;
+    animation: fadeUp 0.6s 0.3s ease both;
+  }
+
+  .btn-primary {
+    background: var(--sage);
+    color: var(--ink);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem; font-weight: 600;
+    padding: 0.95rem 2.5rem;
+    border: none; border-radius: 6px;
+    cursor: pointer; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 0.6rem;
+    transition: background .2s, transform .15s, box-shadow .2s;
+    box-shadow: 0 4px 20px rgba(122,158,95,0.35);
+  }
+  .btn-primary:hover { background: var(--sage-light); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(122,158,95,0.45); }
+  .btn-primary:active { transform: translateY(0); }
+
+  .hero-trust {
+    display: flex; align-items: center; gap: 1.5rem;
+    flex-wrap: wrap; justify-content: center;
+  }
+  .hero-trust-item {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.8rem; color: rgba(232,213,160,0.55);
+  }
+  .hero-trust-item svg { color: var(--sage); opacity: 0.8; }
+
+  .hero-scroll {
+    position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+    color: rgba(232,213,160,0.3); font-size: 0.7rem; letter-spacing: 0.1em;
+    text-transform: uppercase;
+    animation: fadeIn 1s 1s ease both;
+  }
+  .scroll-line {
+    width: 1px; height: 40px;
+    background: linear-gradient(to bottom, rgba(232,213,160,0.3), transparent);
+    animation: scrollLine 2s ease-in-out infinite;
+  }
+  @keyframes scrollLine { 0%,100%{transform:scaleY(1);opacity:1} 50%{transform:scaleY(0.5);opacity:0.3} }
+
+  /* ─── HOW IT WORKS ─────────────────────────────────── */
+  .section {
+    padding: 6rem 1.5rem;
+    max-width: 1100px; margin: 0 auto;
+  }
+
+  .section-label {
+    display: inline-block;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--sage);
+    margin-bottom: 1rem;
+  }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 700; line-height: 1.2;
+    color: var(--earth); margin-bottom: 1rem;
+    letter-spacing: -0.02em;
+  }
+
+  .how-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem; margin-top: 4rem;
+  }
+
+  .step-card {
+    background: white;
+    border: 1px solid rgba(44,58,30,0.1);
+    border-radius: 12px;
+    padding: 2.5rem 2rem;
+    position: relative;
+    transition: transform .3s, box-shadow .3s;
+  }
+  .step-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(44,58,30,0.1); }
+
+  .step-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 4rem; font-weight: 900;
+    color: rgba(122,158,95,0.15);
+    line-height: 1;
+    position: absolute; top: 1.5rem; right: 1.75rem;
+  }
+
+  .step-icon {
+    width: 48px; height: 48px; border-radius: 10px;
+    background: var(--mist);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; margin-bottom: 1.5rem;
+  }
+
+  .step-card h3 {
+    font-size: 1.1rem; font-weight: 600;
+    color: var(--earth); margin-bottom: 0.5rem;
+  }
+  .step-card p {
+    font-size: 0.9rem; font-weight: 300;
+    color: rgba(26,34,16,0.65); line-height: 1.6;
+  }
+
+  /* ─── ANALYSER ─────────────────────────────────────── */
+  #analyser {
+    background: var(--earth);
+    padding: 6rem 1.5rem;
+  }
+
+  .analyser-inner {
+    max-width: 1000px; margin: 0 auto;
+  }
+
+  .analyser-header { text-align: center; margin-bottom: 3rem; }
+  .analyser-header .section-label { color: var(--sage-light); }
+  .analyser-header .section-title { color: var(--straw); }
+
+  .analyser-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(168,196,138,0.2);
+    border-radius: 16px;
+    padding: 2.5rem;
+    backdrop-filter: blur(10px);
+  }
+
+  /* Farm type toggle */
+  .toggle-group {
+    display: flex; background: rgba(255,255,255,0.06); border-radius: 8px;
+    padding: 4px; width: fit-content; margin-bottom: 2rem;
+  }
+  .toggle-btn {
+    padding: 0.6rem 1.5rem; border-radius: 6px;
+    border: none; background: transparent;
+    color: rgba(232,213,160,0.6); font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem; font-weight: 500; cursor: pointer;
+    transition: all .2s; display: flex; align-items: center; gap: 0.4rem;
+  }
+  .toggle-btn.active {
+    background: var(--sage); color: var(--ink);
+  }
+
+  /* Crop chips */
+  .field-label {
+    font-size: 0.8rem; font-weight: 500; letter-spacing: 0.05em;
+    text-transform: uppercase; color: rgba(232,213,160,0.5);
+    margin-bottom: 0.75rem;
+  }
+
+  .chip-grid {
+    display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 2rem;
+  }
+
+  .chip {
+    padding: 0.4rem 0.9rem; border-radius: 100px;
+    border: 1px solid rgba(168,196,138,0.3);
+    background: transparent; color: rgba(232,213,160,0.65);
+    font-family: 'DM Sans', sans-serif; font-size: 0.82rem;
+    cursor: pointer; transition: all .15s;
+  }
+  .chip:hover { border-color: var(--sage-light); color: var(--straw); }
+  .chip.selected { background: rgba(122,158,95,0.25); border-color: var(--sage); color: var(--sage-light); }
+
+  /* Map */
+  .map-row {
+    display: grid; grid-template-columns: 1fr 280px;
+    gap: 1.5rem; margin-bottom: 1.5rem;
+  }
+  @media (max-width: 680px) { .map-row { grid-template-columns: 1fr; } }
+
+  .map-wrapper {
+    position: relative; border-radius: 10px; overflow: hidden;
+    border: 1px solid rgba(168,196,138,0.2);
+  }
+  #map { height: 320px; }
+
+  .map-controls {
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+
+  .loc-btn {
+    background: rgba(122,158,95,0.2); border: 1px solid rgba(122,158,95,0.35);
+    color: var(--sage-light); font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem; font-weight: 500; padding: 0.7rem 1rem;
+    border-radius: 8px; cursor: pointer; transition: all .2s;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .loc-btn:hover { background: rgba(122,158,95,0.35); }
+
+  .coord-box {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(168,196,138,0.15);
+    border-radius: 8px; padding: 1rem;
+  }
+  .coord-row {
+    display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.75rem;
+  }
+  .coord-row:last-child { margin-bottom: 0; }
+  .coord-row label {
+    font-size: 0.72rem; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; color: rgba(232,213,160,0.4);
+  }
+  .coord-val {
+    font-size: 1rem; font-weight: 500; color: var(--straw);
+    font-variant-numeric: tabular-nums;
+  }
+  .coord-hint { font-size: 0.75rem; color: rgba(232,213,160,0.3); }
+
+  /* Farm size */
+  .select-field {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(168,196,138,0.2);
+    color: var(--straw); font-family: 'DM Sans', sans-serif; font-size: 0.9rem;
+    padding: 0.7rem 1rem; border-radius: 8px; width: 100%;
+    margin-bottom: 2rem; cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%237a9e5f' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 1rem center;
+  }
+  .select-field option { background: #2C3A1E; }
+
+  /* Analyse button */
+  .analyse-btn {
+    width: 100%; padding: 1rem;
+    background: var(--sage); color: var(--ink);
+    border: none; border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 1.05rem; font-weight: 600;
+    cursor: pointer; transition: all .2s;
+    display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+    box-shadow: 0 4px 20px rgba(122,158,95,0.3);
+  }
+  .analyse-btn:hover:not(:disabled) { background: var(--sage-light); transform: translateY(-1px); box-shadow: 0 8px 28px rgba(122,158,95,0.4); }
+  .analyse-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .disclaimer {
+    font-size: 0.72rem; color: rgba(232,213,160,0.3);
+    text-align: center; margin-top: 1.25rem; line-height: 1.6;
+  }
+
+  /* Province badges on map canvas */
+  .province-overlay {
+    position: absolute; bottom: 0.5rem; left: 50%; transform: translateX(-50%);
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 4px;
+    pointer-events: none;
+  }
+  .prov-badge {
+    font-size: 0.6rem; background: rgba(44,58,30,0.85);
+    color: var(--sage-light); padding: 2px 6px; border-radius: 3px;
+    border: 1px solid rgba(122,158,95,0.3);
+  }
+
+  /* ─── LOADING ─────────────────────────────────────── */
+  #loading-overlay {
+    display: none; position: fixed; inset: 0; z-index: 2000;
+    background: rgba(26,34,16,0.92); backdrop-filter: blur(8px);
+    flex-direction: column; align-items: center; justify-content: center; gap: 1.5rem;
+  }
+  #loading-overlay.active { display: flex; }
+
+  .loading-spinner {
+    width: 56px; height: 56px;
+    border: 3px solid rgba(122,158,95,0.2);
+    border-top-color: var(--sage);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-size: 1rem; color: var(--straw);
+    text-align: center; max-width: 280px; line-height: 1.5;
+  }
+  .loading-steps { display: flex; flex-direction: column; gap: 0.5rem; }
+  .loading-step {
+    display: flex; align-items: center; gap: 0.75rem;
+    font-size: 0.82rem; color: rgba(232,213,160,0.5);
+    transition: color .3s;
+  }
+  .loading-step.done { color: var(--sage-light); }
+  .loading-step.active { color: var(--straw); }
+  .step-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(122,158,95,0.3);
+    transition: background .3s;
+  }
+  .loading-step.done .step-dot { background: var(--sage); }
+  .loading-step.active .step-dot { background: var(--straw); animation: pulse 1s ease-in-out infinite; }
+
+  /* ─── RESULTS ─────────────────────────────────────── */
+  #results-section {
+    display: none;
+    background: var(--mist); padding: 5rem 1.5rem;
+  }
+  #results-section.active { display: block; }
+
+  .results-inner { max-width: 1000px; margin: 0 auto; }
+
+  .results-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    flex-wrap: wrap; gap: 1rem; margin-bottom: 2.5rem;
+  }
+  .results-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem; font-weight: 700;
+    color: var(--earth);
+  }
+  .results-meta { font-size: 0.82rem; color: rgba(26,34,16,0.5); margin-top: 0.3rem; }
+
+  .reset-btn {
+    background: white; border: 1px solid rgba(44,58,30,0.15);
+    color: var(--earth-mid); font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem; font-weight: 500; padding: 0.6rem 1.2rem;
+    border-radius: 6px; cursor: pointer; transition: all .2s;
+  }
+  .reset-btn:hover { border-color: var(--sage); color: var(--sage); }
+
+  /* Summary cards */
+  .summary-cards {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem; margin-bottom: 2.5rem;
+  }
+  .summary-card {
+    background: white; border-radius: 10px;
+    border: 1px solid rgba(44,58,30,0.08);
+    padding: 1.25rem 1.5rem;
+  }
+  .summary-card-label { font-size: 0.72rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(26,34,16,0.4); margin-bottom: 0.4rem; }
+  .summary-card-value { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 700; color: var(--earth); line-height: 1.1; }
+  .summary-card-sub { font-size: 0.75rem; color: rgba(26,34,16,0.5); margin-top: 0.25rem; }
+
+  /* Recommendation grid */
+  .reco-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem; margin-bottom: 2.5rem;
+  }
+
+  .reco-card {
+    background: white; border-radius: 12px;
+    border: 1px solid rgba(44,58,30,0.08);
+    padding: 1.5rem;
+    transition: transform .25s, box-shadow .25s;
+    position: relative; overflow: hidden;
+  }
+  .reco-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(44,58,30,0.1); }
+
+  .reco-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  }
+  .reco-card.score-high::before { background: var(--score-high); }
+  .reco-card.score-mid::before { background: var(--score-mid); }
+  .reco-card.score-low::before { background: var(--score-low); }
+
+  .reco-emoji { font-size: 2rem; margin-bottom: 0.75rem; }
+  .reco-name { font-size: 1rem; font-weight: 600; color: var(--earth); margin-bottom: 0.25rem; }
+  .reco-type { font-size: 0.75rem; color: rgba(26,34,16,0.45); margin-bottom: 1rem; }
+
+  .score-bar-wrap { margin-bottom: 1rem; }
+  .score-label-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.3rem; }
+  .score-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(26,34,16,0.4); }
+  .score-num { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; }
+  .score-high .score-num { color: var(--score-high); }
+  .score-mid .score-num { color: var(--score-mid); }
+  .score-low .score-num { color: var(--score-low); }
+
+  .score-bar {
+    height: 5px; border-radius: 3px;
+    background: rgba(44,58,30,0.08); overflow: hidden;
+  }
+  .score-fill {
+    height: 100%; border-radius: 3px;
+    transition: width 1s ease;
+  }
+  .score-high .score-fill { background: var(--score-high); }
+  .score-mid .score-fill { background: var(--score-mid); }
+  .score-low .score-fill { background: var(--score-low); }
+
+  .reco-factors { display: flex; flex-wrap: wrap; gap: 4px; }
+  .factor-chip {
+    font-size: 0.68rem; padding: 0.2rem 0.5rem; border-radius: 4px;
+    background: var(--mist); color: rgba(26,34,16,0.6);
+  }
+
+  /* AI Advisory */
+  .advisory-box {
+    background: var(--earth);
+    border-radius: 12px; padding: 2rem 2.5rem;
+    margin-bottom: 2.5rem; position: relative; overflow: hidden;
+  }
+  .advisory-box::before {
+    content: '';
+    position: absolute; top: -40px; right: -40px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(122,158,95,0.15), transparent 70%);
+    border-radius: 50%;
+  }
+  .advisory-eyebrow {
+    font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--sage-light);
+    margin-bottom: 0.75rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .advisory-eyebrow::before {
+    content: ''; display: inline-block;
+    width: 20px; height: 1px; background: var(--sage);
+  }
+  .advisory-text {
+    font-size: 0.95rem; line-height: 1.75; color: rgba(232,213,160,0.85);
+    font-weight: 300;
+  }
+  .advisory-loading {
+    display: flex; align-items: center; gap: 0.75rem;
+    color: rgba(232,213,160,0.4); font-size: 0.9rem;
+  }
+  .advisory-dots span {
+    animation: dotBounce 1.2s ease-in-out infinite;
+    display: inline-block;
+  }
+  .advisory-dots span:nth-child(2) { animation-delay: .2s; }
+  .advisory-dots span:nth-child(3) { animation-delay: .4s; }
+  @keyframes dotBounce { 0%,80%,100%{transform:scale(0);opacity:.4} 40%{transform:scale(1);opacity:1} }
+
+  /* Soil & climate data */
+  .data-panels {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  @media (max-width: 640px) { .data-panels { grid-template-columns: 1fr; } }
+
+  .data-panel {
+    background: white; border-radius: 12px;
+    border: 1px solid rgba(44,58,30,0.08);
+    padding: 1.5rem;
+  }
+  .data-panel-title {
+    font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: rgba(26,34,16,0.4);
+    margin-bottom: 1.25rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+
+  .data-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 0.5rem 0; border-bottom: 1px solid rgba(44,58,30,0.05);
+    font-size: 0.875rem;
+  }
+  .data-row:last-child { border-bottom: none; }
+  .data-key { color: rgba(26,34,16,0.55); }
+  .data-val { font-weight: 600; color: var(--earth); }
+
+  /* Error */
+  .error-box {
+    background: rgba(192,97,43,0.1); border: 1px solid rgba(192,97,43,0.3);
+    border-radius: 10px; padding: 1.25rem 1.5rem;
+    color: var(--rust); font-size: 0.9rem; margin-bottom: 1.5rem;
+    display: none;
+  }
+  .error-box.active { display: block; }
+
+  /* ─── FOOTER ─────────────────────────────────────── */
+  footer {
+    background: var(--ink); padding: 3rem 1.5rem 2rem;
+    text-align: center;
+  }
+  .footer-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem; font-weight: 900;
+    color: var(--straw); margin-bottom: 0.5rem;
+  }
+  .footer-tagline { font-size: 0.8rem; color: rgba(232,213,160,0.35); margin-bottom: 2rem; }
+  .footer-links { display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap; margin-bottom: 2rem; }
+  .footer-link { font-size: 0.8rem; color: rgba(232,213,160,0.4); text-decoration: none; }
+  .footer-link:hover { color: var(--sage-light); }
+  .footer-copy { font-size: 0.75rem; color: rgba(232,213,160,0.2); }
+
+  /* ─── ANIMATIONS ─────────────────────────────────── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; } to { opacity: 1; }
+  }
+
+  .fade-in-up {
+    opacity: 0; transform: translateY(24px);
+    transition: opacity .6s ease, transform .6s ease;
+  }
+  .fade-in-up.visible { opacity: 1; transform: translateY(0); }
+
+  /* ─── RESPONSIVE ─────────────────────────────────── */
+  @media (max-width: 768px) {
+    nav { padding: 0 1.25rem; }
+    .analyser-card { padding: 1.5rem; }
+    .advisory-box { padding: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">Farm<span>IQ</span></div>
+  <div class="nav-right">
+    <span class="nav-badge">🛰️ Live satellite data</span>
+    <a href="#analyser" class="nav-link" style="display:none" id="nav-cta">Analyse My Land</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="home">
+  <div class="hero-eyebrow">
+    <span class="dot"></span>
+    Live satellite data · Free for SA farmers
+  </div>
+  <h1>Know what <em>grows</em><br>on your land</h1>
+  <p class="hero-sub">Drop a pin anywhere in South Africa. Get a full report on which crops and livestock will thrive on your exact land — based on live satellite data.</p>
+  <div class="hero-cta-group">
+    <a href="#analyser" class="btn-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      Analyse My Land — Free
+    </a>
+    <div class="hero-trust">
+      <div class="hero-trust-item">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        No account needed
+      </div>
+      <div class="hero-trust-item">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Real ISRIC + Open-Meteo data
+      </div>
+      <div class="hero-trust-item">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Results in under 30 seconds
+      </div>
+      <div class="hero-trust-item">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        All 9 SA provinces
+      </div>
+    </div>
+  </div>
+  <div class="hero-scroll">
+    <div class="scroll-line"></div>
+    scroll
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section style="background: var(--cream); padding: 6rem 1.5rem;">
+  <div style="max-width: 1100px; margin: 0 auto;">
+    <div style="max-width: 500px;">
+      <span class="section-label">How it works</span>
+      <h2 class="section-title">Three steps to know your land</h2>
+    </div>
+    <div class="how-grid">
+      <div class="step-card fade-in-up">
+        <div class="step-num">1</div>
+        <div class="step-icon">🌾</div>
+        <h3>Choose what you want to farm</h3>
+        <p>Select crops, livestock, or both. We rank every option for your exact location.</p>
+      </div>
+      <div class="step-card fade-in-up" style="transition-delay:.1s">
+        <div class="step-num">2</div>
+        <div class="step-icon">📍</div>
+        <h3>Drop a pin on your farm</h3>
+        <p>Click the map or tap "Use my location" to pinpoint your land precisely.</p>
+      </div>
+      <div class="step-card fade-in-up" style="transition-delay:.2s">
+        <div class="step-num">3</div>
+        <div class="step-icon">📊</div>
+        <h3>Get your full report</h3>
+        <p>Suitability scores, AI advisory, and practical tips — specific to your soil and climate.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ANALYSER -->
+<section id="analyser">
+  <div class="analyser-inner">
+    <div class="analyser-header">
+      <span class="section-label">Land Analyser</span>
+      <h2 class="section-title" style="color: var(--straw);">What do you want to farm?</h2>
+    </div>
+
+    <div class="analyser-card">
+      <!-- Farm type -->
+      <div class="toggle-group">
+        <button class="toggle-btn active" data-type="crops" onclick="setFarmType('crops')">🌾 Crops</button>
+        <button class="toggle-btn" data-type="livestock" onclick="setFarmType('livestock')">🐄 Livestock</button>
+      </div>
+
+      <!-- Crop / livestock chips -->
+      <div id="crops-chips">
+        <div class="field-label">Select crops to check — or leave all unselected to analyse everything</div>
+        <div class="chip-grid" id="crop-chip-grid"></div>
+      </div>
+      <div id="livestock-chips" style="display:none">
+        <div class="field-label">Select livestock to check — or leave all unselected to analyse everything</div>
+        <div class="chip-grid" id="livestock-chip-grid"></div>
+      </div>
+
+      <!-- Map -->
+      <div class="field-label">Pin your farm on the map</div>
+      <div class="map-row">
+        <div class="map-wrapper">
+          <div id="map"></div>
+          <div class="province-overlay" id="prov-overlay"></div>
+        </div>
+        <div class="map-controls">
+          <button class="loc-btn" onclick="useMyLocation()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg>
+            📍 Use my location
+          </button>
+          <div class="coord-box">
+            <div class="coord-row">
+              <label>Latitude</label>
+              <div class="coord-val" id="lat-display">—</div>
+            </div>
+            <div class="coord-row">
+              <label>Longitude</label>
+              <div class="coord-val" id="lng-display">—</div>
+            </div>
+            <div class="coord-hint">Click map to set pin</div>
+          </div>
+          <div style="color: rgba(232,213,160,0.3); font-size: 0.75rem; line-height: 1.5;">
+            Works anywhere in South Africa's 9 provinces
+          </div>
+        </div>
+      </div>
+
+      <!-- Farm size -->
+      <div class="field-label">Farm Size</div>
+      <select class="select-field" id="farm-size">
+        <option value="">Any size</option>
+        <option value="small">Under 5 ha (smallholding)</option>
+        <option value="small-farm">5 – 50 ha (small farm)</option>
+        <option value="medium">50 – 500 ha (medium farm)</option>
+        <option value="commercial">500+ ha (commercial farm)</option>
+      </select>
+
+      <div class="error-box" id="error-box"></div>
+
+      <button class="analyse-btn" id="analyse-btn" onclick="analyseMyLand()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Analyse My Land
+      </button>
+
+      <div class="disclaimer">
+        Recommendations are based on ISRIC SoilGrids satellite soil data, Open-Meteo live climate data, and SA agricultural benchmarks interpreted by Claude AI.
+        Always consult a qualified agronomist or extension officer before making major planting or stocking decisions.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- RESULTS -->
+<section id="results-section">
+  <div class="results-inner">
+    <div class="results-header">
+      <div>
+        <div class="results-title">Your Land Report</div>
+        <div class="results-meta" id="results-meta"></div>
+      </div>
+      <button class="reset-btn" onclick="resetAnalysis()">← New Analysis</button>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="summary-cards" id="summary-cards"></div>
+
+    <!-- Recommendations -->
+    <div class="field-label" style="color:rgba(26,34,16,0.4); margin-bottom: 1rem;" id="reco-label"></div>
+    <div class="reco-grid" id="reco-grid"></div>
+
+    <!-- AI Advisory -->
+    <div class="advisory-box">
+      <div class="advisory-eyebrow">AI Farm Advisory</div>
+      <div id="advisory-content">
+        <div class="advisory-loading">
+          Generating your personalised advisory
+          <span class="advisory-dots"><span>.</span><span>.</span><span>.</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Raw data panels -->
+    <div class="data-panels" id="data-panels"></div>
+  </div>
+
+    <!-- Share & PDF Row -->
+    <div class="share-row" id="share-row" style="display:none; margin-top:2rem; display:flex; flex-wrap:wrap; gap:.75rem; padding-top:1.5rem; border-top:1px solid rgba(44,58,30,.08);">
+      <button onclick="downloadPDF()" style="display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.5rem;background:#4A8C3F;color:white;border:none;border-radius:8px;font-family:DM Sans,sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .2s;">📄 Download PDF Report</button>
+      <button onclick="shareWhatsApp()" style="display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.5rem;background:#25D366;color:white;border:none;border-radius:8px;font-family:DM Sans,sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .2s;">💬 Share on WhatsApp</button>
+      <button onclick="resetAnalysis()" style="display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.5rem;background:white;color:#2C3A1E;border:1px solid rgba(44,58,30,.2);border-radius:8px;font-family:DM Sans,sans-serif;font-size:.9rem;font-weight:500;cursor:pointer;transition:all .2s;">← New Analysis</button>
+    </div>
+</section>
+
+<!-- LOADING OVERLAY -->
+<!-- LOADING OVERLAY — self-contained, no modals inside -->
+<div id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Fetching live data for your land…</div>
+  <div class="loading-steps">
+    <div class="loading-step" id="step-soil">
+      <div class="step-dot"></div>Fetching ISRIC soil data
+    </div>
+    <div class="loading-step" id="step-climate">
+      <div class="step-dot"></div>Fetching Open-Meteo climate data
+    </div>
+    <div class="loading-step" id="step-ai">
+      <div class="step-dot"></div>Running AI analysis
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">FarmIQ</div>
+  <div class="footer-tagline">Live satellite data · Free for South African farmers</div>
+  <div class="footer-links">
+    <a href="#" class="footer-link">Privacy Policy</a>
+    <a href="#" class="footer-link">Terms of Use</a>
+    <a href="mailto:hello@farmiq.co.za" class="footer-link">hello@farmiq.co.za</a>
+  </div>
+  <div class="footer-copy">© 2026 FarmIQ · Free for South African farmers</div>
+</footer>
+
+<!-- ══ SIGN UP MODAL ══ -->
+<div class="overlay" id="signupM" style="display:none;position:fixed;inset:0;z-index:2001;background:rgba(26,34,16,.7);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:1.5rem;">
+<div style="background:white;border-radius:16px;width:100%;max-width:440px;padding:2rem;position:relative;box-shadow:0 24px 80px rgba(26,34,16,.2);max-height:90vh;overflow-y:auto;">
+  <button onclick="closeM('signupM')" style="position:absolute;top:.75rem;right:.75rem;background:rgba(44,58,30,.06);border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">✕</button>
+  <h2 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;color:var(--earth);margin-bottom:.25rem;">Create your account</h2>
+  <p style="font-size:.8rem;color:rgba(26,34,16,.5);margin-bottom:1.25rem;">Free plan · real satellite data · no card needed</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+    <div><label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">First Name</label><input class="fi" id="sfn" placeholder="Moses" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);margin-bottom:0;"></div>
+    <div><label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Last Name</label><input class="fi" id="sln" placeholder="Khumalo" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);margin-bottom:0;"></div>
+  </div>
+  <div style="margin-top:.75rem;"><label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Email</label><input id="sem" type="email" placeholder="you@farm.co.za" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);"></div>
+  <div style="margin-top:.75rem;"><label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Password</label><input id="spw" type="password" placeholder="At least 8 characters" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);"></div>
+  <div style="margin-top:.75rem;"><label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Phone (for SMS reports)</label><input id="sph" type="tel" placeholder="+27 82 123 4567" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);"></div>
+  <div style="margin-top:.75rem;margin-bottom:1rem;"><label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Province</label>
+    <select id="sprov" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);"><option value="">Select province</option><option>Gauteng</option><option>Limpopo</option><option>Mpumalanga</option><option>North West</option><option>Free State</option><option>KwaZulu-Natal</option><option>Northern Cape</option><option>Western Cape</option><option>Eastern Cape</option></select>
+  </div>
+  <div id="signup-error" style="display:none;color:var(--rust);font-size:.8rem;padding:.5rem .75rem;background:rgba(192,97,43,.08);border-radius:6px;margin-bottom:.75rem;"></div>
+  <button onclick="doSignup()" id="signup-btn" style="width:100%;padding:.85rem;background:var(--sage);color:var(--ink);border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .2s;">🚀 Create Free Account</button>
+  <p style="text-align:center;font-size:.78rem;color:rgba(26,34,16,.5);margin-top:.75rem;">Already have an account? <a onclick="swapM('signupM','loginM')" style="color:var(--sage);cursor:pointer;font-weight:600;">Sign in</a></p>
+</div></div>
+
+<!-- ══ LOGIN MODAL ══ -->
+<div class="overlay" id="loginM" style="display:none;position:fixed;inset:0;z-index:2001;background:rgba(26,34,16,.7);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:1.5rem;">
+<div style="background:white;border-radius:16px;width:100%;max-width:400px;padding:2rem;position:relative;box-shadow:0 24px 80px rgba(26,34,16,.2);">
+  <button onclick="closeM('loginM')" style="position:absolute;top:.75rem;right:.75rem;background:rgba(44,58,30,.06);border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">✕</button>
+  <h2 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;color:var(--earth);margin-bottom:.25rem;">Welcome back</h2>
+  <p style="font-size:.8rem;color:rgba(26,34,16,.5);margin-bottom:1.25rem;">Sign in to your FarmIQ account</p>
+  <label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Email</label>
+  <input id="lem" type="email" placeholder="your@email.co.za" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);margin-bottom:.75rem;">
+  <label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Password</label>
+  <input id="lpw" type="password" placeholder="Your password" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);margin-bottom:.5rem;">
+  <p style="text-align:right;margin-bottom:1rem;"><a onclick="doForgotPassword()" style="font-size:.75rem;color:var(--sage);cursor:pointer;">Forgot password?</a></p>
+  <div id="login-error" style="display:none;color:var(--rust);font-size:.8rem;padding:.5rem .75rem;background:rgba(192,97,43,.08);border-radius:6px;margin-bottom:.75rem;"></div>
+  <button onclick="doLogin()" id="login-btn" style="width:100%;padding:.85rem;background:var(--sage);color:var(--ink);border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;margin-bottom:.75rem;">Sign In →</button>
+  <button onclick="demoGo()" style="width:100%;padding:.75rem;background:rgba(44,58,30,.05);color:var(--earth);border:1px solid rgba(44,58,30,.15);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.875rem;font-weight:500;cursor:pointer;">👁️ Demo Mode (no login)</button>
+  <p style="text-align:center;font-size:.78rem;color:rgba(26,34,16,.5);margin-top:.75rem;">No account? <a onclick="swapM('loginM','signupM')" style="color:var(--sage);cursor:pointer;font-weight:600;">Sign up free</a></p>
+</div></div>
+
+<!-- ══ REPORT DETAIL MODAL ══ -->
+<div class="overlay" id="reportDetailM" style="display:none;position:fixed;inset:0;z-index:2001;background:rgba(26,34,16,.7);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:1.5rem;">
+<div style="background:white;border-radius:16px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;padding:1.75rem;position:relative;box-shadow:0 24px 80px rgba(26,34,16,.2);">
+  <button onclick="closeM('reportDetailM')" style="position:absolute;top:.75rem;right:.75rem;background:rgba(44,58,30,.06);border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">✕</button>
+  <div id="reportDetailContent"></div>
+</div></div>
+
+<!-- ══ ADD FARM MODAL ══ -->
+<div class="overlay" id="addFarmM" style="display:none;position:fixed;inset:0;z-index:2001;background:rgba(26,34,16,.7);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:1.5rem;">
+<div style="background:white;border-radius:16px;width:100%;max-width:440px;padding:2rem;position:relative;box-shadow:0 24px 80px rgba(26,34,16,.2);max-height:90vh;overflow-y:auto;">
+  <button onclick="closeM('addFarmM')" style="position:absolute;top:.75rem;right:.75rem;background:rgba(44,58,30,.06);border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">✕</button>
+  <h2 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;color:var(--earth);margin-bottom:.25rem;">Add Farm Profile</h2>
+  <p style="font-size:.8rem;color:rgba(26,34,16,.5);margin-bottom:1.25rem;">Save your farm location for quick re-analysis</p>
+  <label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Farm Name</label>
+  <input id="farmName" placeholder="Home Farm, Plot 12, etc." style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);margin-bottom:.75rem;">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+    <div><label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Latitude</label><input id="farmLat" placeholder="-26.2041" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);"></div>
+    <div><label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Longitude</label><input id="farmLng" placeholder="28.0473" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);"></div>
+  </div>
+  <div style="margin-top:.75rem;"><label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Province</label><select id="farmProvince" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);"><option>Gauteng</option><option>Limpopo</option><option>Mpumalanga</option><option>North West</option><option>Free State</option><option>KwaZulu-Natal</option><option>Northern Cape</option><option>Western Cape</option><option>Eastern Cape</option></select></div>
+  <div style="margin-top:.75rem;"><label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Farm Size</label><select id="farmSizeInput" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);"><option>Under 5 ha</option><option>5–50 ha</option><option>50–500 ha</option><option>500+ ha</option></select></div>
+  <div style="margin-top:.75rem;"><label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Primary Crops</label><input id="farmCrops" placeholder="Maize, Wheat, Tomatoes..." style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);"></div>
+  <div style="margin-top:.75rem;margin-bottom:1rem;"><label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Notes</label><textarea id="farmNotes" rows="2" placeholder="Any notes..." style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);resize:vertical;"></textarea></div>
+  <button onclick="saveFarmFromModal()" style="width:100%;padding:.85rem;background:var(--sage);color:var(--ink);border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;">💾 Save Farm Profile</button>
+</div></div>
+
+<style>.overlay.on{display:flex!important;} @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}} @keyframes spin{to{transform:rotate(360deg)}}</style>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  FarmIQ — Supabase Edition
+//  Real auth · Real DB · Row Level Security · Secure API proxy
+// ═══════════════════════════════════════════════════════════════════
+
+// ─── SUPABASE CONFIG ──────────────────────────────────────────────
+// SUPABASE_URL is set. Replace SUPABASE_ANON_KEY with your anon key from:
+// Supabase Dashboard → Settings → API Keys → Legacy anon, service_role API keys → anon key
+const SUPABASE_URL    = 'https://tlkluxwrzjzxruqakftp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsa2x1eHdyemp6eHJ1cWFrZnRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NDU1NDQsImV4cCI6MjA4OTUyMTU0NH0.dCH2A8XLGt5op_sbutkFwgZGN3nOaRQALz4xhXmvdKc'; // ← paste your anon key here
+
+// The Edge Function URL for the secure Claude proxy
+// Format: https://YOUR_PROJECT_ID.supabase.co/functions/v1/analyze
+const ANALYZE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/analyze`;
+
+// ─── INIT SUPABASE CLIENT ─────────────────────────────────────────
+const { createClient } = window.supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,       // JWT stored in localStorage (safe — it's not the API key)
+    autoRefreshToken: true,     // silently refreshes before expiry
+    detectSessionInUrl: true,   // handles email confirmation redirects
+  }
+});
+
+// ─── CONSTANTS ────────────────────────────────────────────────────
+const CROPS = [
+  {id:'maize',      label:'Maize',      emoji:'🌽'},
+  {id:'wheat',      label:'Wheat',      emoji:'🌾'},
+  {id:'sunflower',  label:'Sunflower',  emoji:'🌻'},
+  {id:'sorghum',    label:'Sorghum',    emoji:'🌿'},
+  {id:'soybeans',   label:'Soybeans',   emoji:'🫘'},
+  {id:'groundnuts', label:'Groundnuts', emoji:'🥜'},
+  {id:'potatoes',   label:'Potatoes',   emoji:'🥔'},
+  {id:'tomatoes',   label:'Tomatoes',   emoji:'🍅'},
+  {id:'onions',     label:'Onions',     emoji:'🧅'},
+  {id:'grapes',     label:'Grapes',     emoji:'🍇'},
+  {id:'citrus',     label:'Citrus',     emoji:'🍊'},
+  {id:'avocado',    label:'Avocado',    emoji:'🥑'},
+  {id:'mango',      label:'Mango',      emoji:'🥭'},
+  {id:'macadamia',  label:'Macadamia',  emoji:'🌰'},
+  {id:'sugarcane',  label:'Sugarcane',  emoji:'🎋'},
+  {id:'cotton',     label:'Cotton',     emoji:'☁️'},
+  {id:'canola',     label:'Canola',     emoji:'🌼'},
+  {id:'vegetables', label:'Vegetables', emoji:'🥦'},
+];
+const LIVESTOCK = [
+  {id:'beef-cattle',  label:'Beef Cattle',  emoji:'🐄'},
+  {id:'dairy-cattle', label:'Dairy Cattle', emoji:'🥛'},
+  {id:'sheep',        label:'Sheep',        emoji:'🐑'},
+  {id:'goats',        label:'Goats',        emoji:'🐐'},
+  {id:'pigs',         label:'Pigs',         emoji:'🐷'},
+  {id:'broilers',     label:'Broilers',     emoji:'🐔'},
+  {id:'layers',       label:'Layers',       emoji:'🥚'},
+  {id:'ostriches',    label:'Ostriches',    emoji:'🪶'},
+  {id:'game',         label:'Game Farming', emoji:'🦌'},
+  {id:'aquaculture',  label:'Aquaculture',  emoji:'🐟'},
+];
+const SCORE_RANGES = {
+  'maize':       {ph:[5.8,7.2],precip:[450,900], temp:[18,30],clay:[15,45]},
+  'wheat':       {ph:[6.0,7.5],precip:[300,700], temp:[12,25],clay:[15,50]},
+  'sunflower':   {ph:[6.0,7.5],precip:[300,700], temp:[20,30],clay:[10,40]},
+  'sorghum':     {ph:[5.5,7.5],precip:[300,700], temp:[20,35],clay:[10,45]},
+  'soybeans':    {ph:[6.0,7.2],precip:[500,900], temp:[20,28],clay:[15,40]},
+  'groundnuts':  {ph:[5.8,7.0],precip:[400,800], temp:[22,32],clay:[5,25]},
+  'potatoes':    {ph:[4.8,6.5],precip:[500,900], temp:[15,22],clay:[10,35]},
+  'tomatoes':    {ph:[6.0,7.0],precip:[600,1200],temp:[18,28],clay:[20,50]},
+  'onions':      {ph:[6.0,7.0],precip:[350,700], temp:[15,25],clay:[15,40]},
+  'grapes':      {ph:[6.0,7.5],precip:[200,600], temp:[18,28],clay:[15,45]},
+  'citrus':      {ph:[5.5,7.0],precip:[900,1800],temp:[20,32],clay:[20,50]},
+  'avocado':     {ph:[5.5,7.0],precip:[1000,1800],temp:[20,30],clay:[20,45]},
+  'mango':       {ph:[5.5,7.5],precip:[900,2000],temp:[24,35],clay:[15,45]},
+  'macadamia':   {ph:[5.0,6.5],precip:[1000,2000],temp:[18,28],clay:[20,50]},
+  'sugarcane':   {ph:[5.5,7.5],precip:[1200,2000],temp:[22,35],clay:[20,50]},
+  'cotton':      {ph:[5.8,7.5],precip:[500,900], temp:[23,33],clay:[15,45]},
+  'canola':      {ph:[5.5,7.0],precip:[300,600], temp:[12,22],clay:[15,45]},
+  'vegetables':  {ph:[6.0,7.0],precip:[400,900], temp:[15,28],clay:[20,50]},
+  'beef-cattle': {ph:[5.5,8.0],precip:[250,1200],temp:[10,35],clay:[5,60]},
+  'dairy-cattle':{ph:[5.8,7.5],precip:[500,1500],temp:[10,26],clay:[10,60]},
+  'sheep':       {ph:[5.5,8.0],precip:[150,800], temp:[5,35], clay:[5,55]},
+  'goats':       {ph:[5.0,8.5],precip:[100,900], temp:[10,38],clay:[5,60]},
+  'pigs':        {ph:[6.0,7.5],precip:[400,1200],temp:[15,28],clay:[10,60]},
+  'broilers':    {ph:[5.5,8.0],precip:[300,1500],temp:[18,30],clay:[5,60]},
+  'layers':      {ph:[5.5,8.0],precip:[300,1500],temp:[18,28],clay:[5,60]},
+  'ostriches':   {ph:[5.5,8.5],precip:[100,600], temp:[18,38],clay:[5,50]},
+  'game':        {ph:[5.0,8.5],precip:[200,900], temp:[10,38],clay:[5,55]},
+  'aquaculture': {ph:[6.5,8.0],precip:[400,2000],temp:[15,28],clay:[5,60]},
+};
+
+// SA Regional soil fallback database (used when ISRIC is offline)
+const SA_SOIL_DB = {
+  'lat_22_26_lng_24_28':{ph:'6.1',clay_pct:18,sand_pct:62,silt_pct:20,organic_carbon:'0.9',nitrogen:'0.06',soilType:'Sandy Loam (Bushveld)'},
+  'lat_22_26_lng_28_33':{ph:'5.8',clay_pct:22,sand_pct:55,silt_pct:23,organic_carbon:'1.1',nitrogen:'0.07',soilType:'Clay Sandy Loam (Lowveld)'},
+  'lat_22_26_lng_20_24':{ph:'6.4',clay_pct:14,sand_pct:70,silt_pct:16,organic_carbon:'0.7',nitrogen:'0.05',soilType:'Sandy (Kalahari)'},
+  'lat_22_26_lng_16_20':{ph:'6.6',clay_pct:12,sand_pct:74,silt_pct:14,organic_carbon:'0.6',nitrogen:'0.04',soilType:'Sandy (Northern Cape Fringe)'},
+  'lat_26_29_lng_24_28':{ph:'5.9',clay_pct:28,sand_pct:45,silt_pct:27,organic_carbon:'1.8',nitrogen:'0.12',soilType:'Clay Loam (Highveld)'},
+  'lat_26_29_lng_28_33':{ph:'5.7',clay_pct:32,sand_pct:38,silt_pct:30,organic_carbon:'2.1',nitrogen:'0.14',soilType:'Clay (Mpumalanga Escarpment)'},
+  'lat_26_29_lng_20_24':{ph:'6.3',clay_pct:20,sand_pct:58,silt_pct:22,organic_carbon:'1.2',nitrogen:'0.08',soilType:'Sandy Clay Loam (North West)'},
+  'lat_26_29_lng_16_20':{ph:'7.1',clay_pct:16,sand_pct:65,silt_pct:19,organic_carbon:'0.8',nitrogen:'0.05',soilType:'Sandy Loam (Namakwa)'},
+  'lat_29_33_lng_28_33':{ph:'5.5',clay_pct:35,sand_pct:32,silt_pct:33,organic_carbon:'2.4',nitrogen:'0.16',soilType:'Clay (KZN Midlands)'},
+  'lat_29_33_lng_24_28':{ph:'6.8',clay_pct:22,sand_pct:52,silt_pct:26,organic_carbon:'1.0',nitrogen:'0.07',soilType:'Loam (Karoo)'},
+  'lat_29_33_lng_20_24':{ph:'7.4',clay_pct:18,sand_pct:60,silt_pct:22,organic_carbon:'0.6',nitrogen:'0.04',soilType:'Sandy Loam (Central Karoo)'},
+  'lat_29_33_lng_16_20':{ph:'7.8',clay_pct:14,sand_pct:68,silt_pct:18,organic_carbon:'0.4',nitrogen:'0.03',soilType:'Sandy (Namaqualand)'},
+  'lat_33_36_lng_16_20':{ph:'5.3',clay_pct:24,sand_pct:50,silt_pct:26,organic_carbon:'2.8',nitrogen:'0.18',soilType:'Sandy Clay Loam (Cape Coastal)'},
+  'lat_33_36_lng_20_24':{ph:'5.6',clay_pct:26,sand_pct:46,silt_pct:28,organic_carbon:'2.2',nitrogen:'0.15',soilType:'Clay Loam (Winelands)'},
+  'lat_33_36_lng_24_28':{ph:'6.0',clay_pct:28,sand_pct:44,silt_pct:28,organic_carbon:'1.5',nitrogen:'0.10',soilType:'Clay Loam (Garden Route)'},
+  'lat_33_36_lng_28_33':{ph:'5.8',clay_pct:30,sand_pct:40,silt_pct:30,organic_carbon:'1.8',nitrogen:'0.12',soilType:'Clay Loam (Eastern Cape)'},
+};
+
+function getSASoilFallback(lat, lng) {
+  const a=Math.abs(lat);
+  const latB=a<26?'22_26':a<29?'26_29':a<33?'29_33':'33_36';
+  const lngB=lng<20?'16_20':lng<24?'20_24':lng<28?'24_28':'28_33';
+  return SA_SOIL_DB[`lat_${latB}_lng_${lngB}`] || {ph:'6.2',clay_pct:25,sand_pct:50,silt_pct:25,organic_carbon:'1.2',nitrogen:'0.08',soilType:'Sandy Clay Loam (SA Regional Estimate)'};
+}
+
+// ─── STATE ────────────────────────────────────────────────────────
+let currentUser    = null;
+let currentProfile = null;
+let map, marker;
+let selectedLat = null, selectedLng = null;
+let farmType = 'crops';
+let selectedItems = new Set();
+let lastSoil = {}, lastClimate = {}, lastScored = [];
+
+// ─── AUTH STATE LISTENER ──────────────────────────────────────────
+// This fires on page load, login, logout, and token refresh.
+// It's the single source of truth for auth state — never check localStorage directly.
+sb.auth.onAuthStateChange(async (event, session) => {
+  currentUser = session?.user ?? null;
+
+  if (currentUser) {
+    // Load profile from DB
+    const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+    currentProfile = data;
+    updateNavForLoggedIn();
+    if (event === 'SIGNED_IN') {
+      closeM('loginM'); closeM('signupM');
+      showToast(`Welcome back, ${getFirstName()}! 🌿`, 'success');
+    }
+  } else {
+    currentProfile = null;
+    updateNavForLoggedOut();
+  }
+});
+
+function getFirstName() {
+  return currentProfile?.full_name?.split(' ')[0]
+    || currentUser?.email?.split('@')[0]
+    || 'Farmer';
+}
+
+function updateNavForLoggedIn() {
+  document.getElementById('navSignIn')?.style.setProperty('display', 'none');
+  document.getElementById('navStart')?.textContent && (document.getElementById('navStart').textContent = 'Dashboard →');
+  document.getElementById('navStart')?.removeAttribute('onclick');
+  document.getElementById('navStart')?.addEventListener('click', () => window.location.hash = '#analyser');
+}
+function updateNavForLoggedOut() {
+  document.getElementById('navSignIn')?.style.removeProperty('display');
+  if (document.getElementById('navStart')) document.getElementById('navStart').textContent = 'Start Free →';
+}
+
+// ─── AUTH ACTIONS ─────────────────────────────────────────────────
+
+async function doSignup() {
+  const fn   = document.getElementById('sfn')?.value.trim();
+  const ln   = document.getElementById('sln')?.value.trim();
+  const em   = document.getElementById('sem')?.value.trim();
+  const pw   = document.getElementById('spw')?.value;
+  const ph   = document.getElementById('sph')?.value.trim();
+  const prov = document.getElementById('sprov')?.value;
+
+  if (!fn || !em || !pw) { showFormError('signupM', 'Please fill in your name, email and password.'); return; }
+  if (pw.length < 8)     { showFormError('signupM', 'Password must be at least 8 characters.'); return; }
+
+  setModalLoading('signupM', true);
+
+  const { data, error } = await sb.auth.signUp({
+    email: em,
+    password: pw,
+    options: {
+      data: { full_name: `${fn} ${ln}`.trim() }
+    }
+  });
+
+  setModalLoading('signupM', false);
+
+  if (error) { showFormError('signupM', error.message); return; }
+
+  // Update profile with extra fields
+  if (data.user) {
+    await sb.from('profiles').update({ full_name: `${fn} ${ln}`.trim(), phone: ph, province: prov }).eq('id', data.user.id);
+  }
+
+  // Supabase sends a confirmation email by default.
+  // If you want instant access (no email confirm), disable it in:
+  // Supabase Dashboard → Auth → Providers → Email → "Confirm email" toggle OFF
+  closeM('signupM');
+  showToast('Account created! Check your email to confirm, then sign in.', 'success');
+}
+
+async function doLogin() {
+  const em = document.getElementById('lem')?.value.trim();
+  const pw = document.getElementById('lpw')?.value;
+
+  if (!em || !pw) { showFormError('loginM', 'Please enter your email and password.'); return; }
+
+  setModalLoading('loginM', true);
+
+  const { error } = await sb.auth.signInWithPassword({ email: em, password: pw });
+
+  setModalLoading('loginM', false);
+
+  if (error) {
+    showFormError('loginM', error.message === 'Invalid login credentials'
+      ? 'Incorrect email or password. Please try again.'
+      : error.message
+    );
+    return;
+  }
+  // onAuthStateChange fires automatically → closes modal + shows dashboard
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  showToast('Signed out successfully.', 'info');
+}
+
+async function doForgotPassword() {
+  const em = prompt('Enter your email address to reset your password:');
+  if (!em) return;
+  const { error } = await sb.auth.resetPasswordForEmail(em, {
+    redirectTo: window.location.origin + '/?reset=true',
+  });
+  if (error) showToast(error.message, 'error');
+  else showToast('Password reset email sent! Check your inbox.', 'success');
+}
+
+// Demo mode — creates an anonymous guest session so the UI works without signup
+async function demoGo() {
+  closeM('loginM'); closeM('signupM');
+  // Use a fake local user object for demo — no Supabase call, no DB writes
+  currentUser = { id: 'demo', email: 'demo@farmiq.co.za' };
+  currentProfile = { full_name: 'Demo Farmer', plan: 'free', analyses_this_month: 0 };
+  showToast('Demo mode — analyses work but data is not saved.', 'info');
+  document.getElementById('analyser')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+// ─── PROFILE & USAGE ──────────────────────────────────────────────
+
+async function loadProfile() {
+  if (!currentUser || currentUser.id === 'demo') return;
+  const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  if (data) currentProfile = data;
+}
+
+function getCurrentUsage() {
+  return currentProfile?.analyses_this_month ?? 0;
+}
+
+function getUsageLimit() {
+  return currentProfile?.plan === 'free' ? 3 : 9999;
+}
+
+function updateUsageBar() {
+  const limit  = getUsageLimit();
+  const used   = getCurrentUsage();
+  const pct    = Math.min(100, (used / limit) * 100);
+  const isPro  = currentProfile?.plan !== 'free';
+  const countEl  = document.getElementById('usageCount');
+  const fillEl   = document.getElementById('usageFill');
+  const upgEl    = document.getElementById('usageUpgrade');
+  if (countEl) countEl.textContent = isPro ? `${used} (Unlimited)` : `${used} / ${limit}`;
+  if (fillEl) {
+    fillEl.style.width = pct + '%';
+    fillEl.className = 'usage-fill' + (pct >= 100 ? ' full' : pct >= 66 ? ' warn' : '');
+  }
+  if (upgEl) upgEl.style.display = (!isPro && used >= limit - 1) ? 'block' : 'none';
+}
+
+// ─── FARMS (Supabase DB) ──────────────────────────────────────────
+
+async function loadFarms() {
+  if (!currentUser || currentUser.id === 'demo') return [];
+  const { data, error } = await sb.from('farms').select('*').order('created_at', { ascending: false });
+  if (error) { console.error('Load farms:', error); return []; }
+  return data || [];
+}
+
+async function saveFarm(farmData) {
+  if (!currentUser) { showToast('Please sign in to save farm profiles.', 'error'); return null; }
+  if (currentUser.id === 'demo') { showToast('Sign up to save farm profiles permanently.', 'info'); return { ...farmData, id: 'demo-' + Date.now() }; }
+
+  const { data, error } = await sb.from('farms').insert({
+    user_id:  currentUser.id,
+    name:     farmData.name,
+    lat:      parseFloat(farmData.lat),
+    lng:      parseFloat(farmData.lng),
+    province: farmData.province,
+    size:     farmData.size,
+    crops:    farmData.crops,
+    notes:    farmData.notes,
+  }).select().single();
+
+  if (error) { showToast('Could not save farm: ' + error.message, 'error'); return null; }
+  showToast(`Farm "${farmData.name}" saved! 🌾`, 'success');
+  return data;
+}
+
+async function deleteFarm(id) {
+  if (!currentUser || currentUser.id === 'demo') return;
+  if (!confirm('Remove this farm profile?')) return;
+  const { error } = await sb.from('farms').delete().eq('id', id).eq('user_id', currentUser.id);
+  if (error) showToast('Could not delete: ' + error.message, 'error');
+  else { showToast('Farm removed.', 'info'); renderFarms(); }
+}
+
+async function renderFarms() {
+  const grid = document.getElementById('farmsGrid');
+  if (!grid) return;
+  const farms = await loadFarms();
+  grid.innerHTML = `<div class="add-farm-card" onclick="openM('addFarmM')"><div class="add-farm-ic">➕</div><div class="add-farm-txt">Add New Farm</div></div>`;
+  farms.forEach(f => {
+    const sc = f.last_score ? (f.last_score>=80?'var(--score-high)':f.last_score>=60?'var(--gold)':'var(--score-low)') : 'rgba(26,34,16,0.3)';
+    const card = document.createElement('div');
+    card.className = 'farm-card';
+    card.innerHTML = `
+      <div class="farm-card-header">
+        <div><div class="farm-card-name">${f.name}</div><div class="farm-card-loc">📍 ${parseFloat(f.lat).toFixed(4)}°, ${parseFloat(f.lng).toFixed(4)}°</div></div>
+        ${f.last_score ? `<div style="color:${sc};font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;">${f.last_score}</div>` : ''}
+      </div>
+      <div class="farm-card-body">
+        <div class="farm-stat"><span class="farm-stat-key">Province</span><span class="farm-stat-val">${f.province||'—'}</span></div>
+        <div class="farm-stat"><span class="farm-stat-key">Size</span><span class="farm-stat-val">${f.size||'—'}</span></div>
+        <div class="farm-stat"><span class="farm-stat-key">Crops</span><span class="farm-stat-val">${f.crops||'—'}</span></div>
+        ${f.last_soil_type ? `<div class="farm-stat"><span class="farm-stat-key">Soil</span><span class="farm-stat-val">${f.last_soil_type}</span></div>` : ''}
+      </div>
+      <div class="farm-card-footer">
+        <button class="farm-btn farm-btn-primary" onclick="analyseThisFarm('${f.lat}','${f.lng}')">🔍 Analyse</button>
+        <button class="farm-btn farm-btn-danger" onclick="deleteFarm('${f.id}')">🗑️</button>
+      </div>`;
+    grid.insertBefore(card, grid.firstChild);
+  });
+}
+
+async function saveFarmFromModal() {
+  const name = document.getElementById('farmName')?.value.trim();
+  const lat  = document.getElementById('farmLat')?.value.trim();
+  const lng  = document.getElementById('farmLng')?.value.trim();
+  if (!name || !lat || !lng) { showToast('Name and coordinates are required.', 'error'); return; }
+  const result = await saveFarm({ name, lat, lng,
+    province: document.getElementById('farmProvince')?.value,
+    size:     document.getElementById('farmSizeInput')?.value,
+    crops:    document.getElementById('farmCrops')?.value,
+    notes:    document.getElementById('farmNotes')?.value,
+  });
+  if (result) { closeM('addFarmM'); renderFarms(); ['farmName','farmLat','farmLng','farmCrops','farmNotes'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).value=''; }); }
+}
+
+function analyseThisFarm(lat, lng) {
+  if (document.getElementById('inLat')) document.getElementById('inLat').value = lat;
+  if (document.getElementById('inLng')) document.getElementById('inLng').value = lng;
+  syncMapFromInputs();
+  document.getElementById('analyser')?.scrollIntoView({ behavior: 'smooth' });
+  showToast('Farm loaded — click Analyse to run report.', 'info');
+}
+
+// ─── REPORTS (Supabase DB) ────────────────────────────────────────
+
+async function saveReport(reportData) {
+  if (!currentUser) return;
+  if (currentUser.id === 'demo') {
+    showToast('Sign up to save reports permanently.', 'info'); return;
+  }
+  const { error } = await sb.from('reports').insert({
+    user_id:         currentUser.id,
+    lat:             selectedLat,
+    lng:             selectedLng,
+    farm_type:       farmType,
+    farm_size:       document.getElementById('inSize')?.value || null,
+    score:           reportData.score,
+    verdict:         reportData.verdict,
+    soil_type:       lastSoil.soilType || null,
+    soil_source:     lastSoil.source   || null,
+    soil_data:       { ph: lastSoil.ph, clay_pct: lastSoil.clay_pct, sand_pct: lastSoil.sand_pct, silt_pct: lastSoil.silt_pct, organic_carbon: lastSoil.organic_carbon, nitrogen: lastSoil.nitrogen },
+    climate_data:    { current_temp: lastClimate.current_temp, avg_max_temp: lastClimate.avg_max_temp, avg_min_temp: lastClimate.avg_min_temp, total_precip_90d: lastClimate.total_precip_90d, annual_precip_est: lastClimate.annual_precip_est, et0: lastClimate.et0, soil_moisture: lastClimate.soil_moisture },
+    recommendations: lastScored.slice(0, 10).map(i => ({ id: i.id, label: i.label, emoji: i.emoji, score: i.score, factors: i.factors })),
+    advisory:        reportData.advisory || null,
+    selected_items:  [...selectedItems],
+  });
+  if (error) console.error('Save report:', error);
+  else renderReports();
+}
+
+async function loadReports() {
+  if (!currentUser || currentUser.id === 'demo') return [];
+  const { data, error } = await sb.from('reports').select('*').order('created_at', { ascending: false }).limit(50);
+  if (error) { console.error('Load reports:', error); return []; }
+  return data || [];
+}
+
+async function deleteReport(id) {
+  if (!currentUser || currentUser.id === 'demo') return;
+  if (!confirm('Delete this report?')) return;
+  await sb.from('reports').delete().eq('id', id).eq('user_id', currentUser.id);
+  showToast('Report deleted.', 'info');
+  renderReports();
+}
+
+async function renderReports() {
+  const list = document.getElementById('reportsList');
+  if (!list) return;
+  const reports = await loadReports();
+  if (!reports.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-ic">📋</div><div class="empty-title">No reports yet</div><div class="empty-desc">Run a land analysis to generate your first report.</div></div>`;
+    return;
+  }
+  list.innerHTML = reports.map(r => {
+    const sc = r.score>=80?'var(--score-high)':r.score>=60?'var(--gold)':'var(--score-low)';
+    const date = new Date(r.created_at).toLocaleDateString('en-ZA', {day:'2-digit',month:'short',year:'numeric'});
+    const topCrop = r.recommendations?.[0];
+    return `<div class="report-item" onclick="openReportDetail('${r.id}')">
+      <div class="report-score-ring" style="background:${sc}22;color:${sc};">${r.score||'—'}</div>
+      <div>
+        <div class="report-info-title">📍 ${parseFloat(r.lat).toFixed(4)}°, ${parseFloat(r.lng).toFixed(4)}°</div>
+        <div class="report-info-meta">${date} · ${r.soil_type||'—'} · ${r.farm_size||'Not specified'}</div>
+        <div class="report-info-crops">${topCrop?`${topCrop.emoji} ${topCrop.label}`:''} · ${r.climate_data?.current_temp||'—'}°C · ${r.climate_data?.total_precip_90d||'—'}mm/90d</div>
+      </div>
+      <div class="report-actions" onclick="event.stopPropagation()">
+        <div class="icon-btn" title="Download PDF" onclick="downloadReportPDF('${r.id}')">📄</div>
+        <div class="icon-btn danger" title="Delete" onclick="deleteReport('${r.id}')">🗑️</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function openReportDetail(id) {
+  const reports = await loadReports();
+  const r = reports.find(x => x.id === id);
+  if (!r) return;
+  const sc = r.score>=80?'var(--score-high)':r.score>=60?'var(--gold)':'var(--score-low)';
+  document.getElementById('reportDetailContent').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem;">
+      <div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;margin-bottom:.25rem;">Land Report</div>
+        <div style="font-size:.75rem;color:rgba(26,34,16,.5);">📍 ${parseFloat(r.lat).toFixed(4)}°, ${parseFloat(r.lng).toFixed(4)}° · ${new Date(r.created_at).toLocaleDateString('en-ZA',{year:'numeric',month:'long',day:'numeric'})}</div>
+      </div>
+      <div style="text-align:center;"><div style="width:52px;height:52px;border-radius:50%;background:${sc}22;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:${sc};">${r.score}</div><div style="font-size:.7rem;color:${sc};font-weight:600;margin-top:.25rem;">${r.verdict}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem;">
+      ${[['Soil Type',r.soil_type],['pH',r.soil_data?.ph],['Rainfall 90d',r.climate_data?.total_precip_90d?r.climate_data.total_precip_90d+'mm':null],['Current Temp',r.climate_data?.current_temp?r.climate_data.current_temp+'°C':null]].map(([k,v])=>`<div style="background:rgba(44,58,30,.04);border-radius:6px;padding:.6rem .75rem;"><div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:rgba(26,34,16,.4);margin-bottom:.2rem;">${k}</div><div style="font-size:.95rem;font-weight:600;">${v||'N/A'}</div></div>`).join('')}
+    </div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+      ${(r.recommendations||[]).slice(0,4).map((c,i)=>`<div style="background:${i<2?'rgba(122,158,95,.1)':'rgba(44,58,30,.04)'};border:1px solid ${i<2?'rgba(122,158,95,.25)':'rgba(44,58,30,.08)'};border-radius:8px;padding:.6rem .75rem;text-align:center;min-width:65px;"><div style="font-size:1.3rem;margin-bottom:.25rem;">${c.emoji}</div><div style="font-size:.78rem;font-weight:600;">${c.label}</div><div style="font-size:.65rem;color:${c.score>=70?'var(--score-high)':c.score>=45?'var(--gold)':'var(--score-low)'};font-weight:600;">${c.score}/100</div></div>`).join('')}
+    </div>
+    ${r.advisory?`<div style="background:var(--earth);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1rem;"><div style="font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--sage-light);margin-bottom:.5rem;">AI Advisory</div><div style="font-size:.85rem;line-height:1.7;color:rgba(232,213,160,.8);">${r.advisory}</div></div>`:''}
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+      <button onclick="downloadReportPDF('${r.id}')" style="display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1rem;background:rgba(192,97,43,.1);color:var(--rust);border:1px solid rgba(192,97,43,.25);border-radius:7px;font-size:.8rem;font-weight:600;cursor:pointer;">📄 PDF</button>
+      <button onclick="shareReportWA('${r.id}')" style="display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1rem;background:rgba(37,211,102,.1);color:#25d366;border:1px solid rgba(37,211,102,.25);border-radius:7px;font-size:.8rem;font-weight:600;cursor:pointer;">💬 WhatsApp</button>
+    </div>`;
+  openM('reportDetailM');
+}
+
+async function downloadReportPDF(id) {
+  const reports = await loadReports();
+  const r = reports.find(x => x.id === id);
+  if (!r) return;
+  // Temporarily set last* state so downloadPDF() uses this historical report's data
+  const backup = { soil: lastSoil, climate: lastClimate, scored: lastScored, lat: selectedLat, lng: selectedLng };
+  lastSoil    = { ...r.soil_data, soilType: r.soil_type, source: r.soil_source };
+  lastClimate = { ...r.climate_data };
+  lastScored  = r.recommendations || [];
+  selectedLat = r.lat; selectedLng = r.lng;
+  downloadPDF();
+  // Restore
+  lastSoil = backup.soil; lastClimate = backup.climate; lastScored = backup.scored;
+  selectedLat = backup.lat; selectedLng = backup.lng;
+}
+
+async function shareReportWA(id) {
+  const reports = await loadReports();
+  const r = reports.find(x => x.id === id);
+  if (!r) return;
+  const top3 = (r.recommendations||[]).slice(0,3).map(c=>`${c.emoji} ${c.label}(${c.score}/100)`).join(', ');
+  const msg = `🌿 *FarmIQ Land Report*\n\n📍 ${parseFloat(r.lat).toFixed(4)}°, ${parseFloat(r.lng).toFixed(4)}°\n⭐ Score: ${r.score}/100 — ${r.verdict}\n🪨 ${r.soil_type}\n\n🌱 Top: ${top3}\n\n_farmiq.co.za_`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+// ─── MAP ──────────────────────────────────────────────────────────
+function initMap() {
+  if (map) return;
+  if (typeof L === 'undefined') { setTimeout(initMap, 800); return; }
+  map = L.map('map', { center:[-28.5,25.0], zoom:5, zoomControl:true });
+  const carto = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_matter/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd',attribution:'© CARTO © OSM'});
+  const osm   = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'});
+  carto.on('tileerror',()=>{if(!map._fb){map._fb=true;map.removeLayer(carto);osm.addTo(map);}});
+  carto.addTo(map);
+  const provinces=[['Limpopo',[-24.7,26.5],[-22.1,31.8]],['Mpumalanga',[-27.3,29.5],[-24.5,32.5]],['North West',[-27.8,22.5],[-24.5,28.0]],['Free State',[-30.7,24.5],[-27.0,30.0]],['KwaZulu-Natal',[-31.5,29.0],[-27.0,32.9]],['Gauteng',[-26.8,27.5],[-25.5,28.8]],['Western Cape',[-34.8,17.9],[-31.0,23.0]],['Eastern Cape',[-34.0,22.8],[-30.0,30.0]],['Northern Cape',[-32.0,16.5],[-26.5,25.0]]];
+  provinces.forEach(([name,sw,ne])=>{L.rectangle([sw,ne],{color:'rgba(122,158,95,0.5)',weight:1,fillColor:'rgba(122,158,95,0.04)',fillOpacity:1,interactive:false}).addTo(map);L.marker([(sw[0]+ne[0])/2,(sw[1]+ne[1])/2],{icon:L.divIcon({className:'',html:`<div style="color:rgba(168,196,138,0.55);font-size:9px;font-weight:700;white-space:nowrap;pointer-events:none;">${name}</div>`,iconSize:[120,14],iconAnchor:[60,7]}),interactive:false}).addTo(map);});
+  map.on('click',e=>{const{lat,lng}=e.latlng;if(lat<-35||lat>-21||lng<16||lng>33.5){showError('Please select a location within South Africa.');return;}clearError();setPin(lat,lng);if(map.getZoom()<9)map.flyTo([lat,lng],10,{duration:1});});
+  const gps=L.control({position:'topright'});gps.onAdd=()=>{const d=L.DomUtil.create('div','leaflet-bar');d.innerHTML=`<a href="#" onclick="useMyLocation(event)" title="Use my location" style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;background:rgba(44,58,30,.95);border:1px solid rgba(122,158,95,.4)!important;border-radius:6px!important;color:#a8c48a;font-size:16px;text-decoration:none;">📍</a>`;L.DomEvent.disableClickPropagation(d);return d;};gps.addTo(map);
+  setTimeout(()=>map.invalidateSize(),300);
+}
+function setPin(lat,lng){selectedLat=lat;selectedLng=lng;const ld=document.getElementById('lat-display');const lng2=document.getElementById('lng-display');if(ld)ld.textContent=lat.toFixed(5);if(lng2)lng2.textContent=lng.toFixed(5);const icon=L.divIcon({className:'',html:`<div style="width:22px;height:22px;background:var(--sage);border:3px solid white;border-radius:50%;box-shadow:0 2px 10px rgba(122,158,95,.6);"></div>`,iconSize:[22,22],iconAnchor:[11,11]});if(marker)map.removeLayer(marker);marker=L.marker([lat,lng],{icon}).bindPopup(`<b style="color:#4a6232;">📍 Farm Location</b><br><small>${lat.toFixed(4)}°, ${lng.toFixed(4)}°</small>`).addTo(map).openPopup();}
+function syncMapFromInputs(){const lat=parseFloat(document.getElementById('inLat')?.value);const lng=parseFloat(document.getElementById('inLng')?.value);if(!isNaN(lat)&&!isNaN(lng)&&map&&lat>=-35&&lat<=-21&&lng>=16&&lng<=33.5){setPin(lat,lng);if(map.getZoom()<8)map.flyTo([lat,lng],10,{duration:.8});else map.panTo([lat,lng]);}}
+function useMyLocation(e){if(e)e.preventDefault();if(!navigator.geolocation){showError('Geolocation not supported.');return;}navigator.geolocation.getCurrentPosition(p=>{const{latitude:lat,longitude:lng}=p.coords;if(lat<-35||lat>-21||lng<16||lng>33.5){showError('Outside SA — pin manually.');return;}clearError();setPin(lat,lng);map.flyTo([lat,lng],12,{duration:1.2});},()=>showError('Could not get location — click map instead.'),{timeout:10000,maximumAge:60000});}
+
+// ─── CHIPS ────────────────────────────────────────────────────────
+function buildChips(){const cg=document.getElementById('crop-chip-grid');CROPS.forEach(c=>{const ch=document.createElement('button');ch.className='chip';ch.dataset.id=c.id;ch.innerHTML=`${c.emoji} ${c.label}`;ch.onclick=()=>toggleChip(ch,c.id);cg.appendChild(ch);});const lg=document.getElementById('livestock-chip-grid');LIVESTOCK.forEach(l=>{const ch=document.createElement('button');ch.className='chip';ch.dataset.id=l.id;ch.innerHTML=`${l.emoji} ${l.label}`;ch.onclick=()=>toggleChip(ch,l.id);lg.appendChild(ch);});}
+function toggleChip(chip,id){if(selectedItems.has(id)){selectedItems.delete(id);chip.classList.remove('selected');}else{selectedItems.add(id);chip.classList.add('selected');}}
+function setFarmType(type){farmType=type;selectedItems.clear();document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected'));document.querySelectorAll('.toggle-btn').forEach(b=>b.classList.toggle('active',b.dataset.type===type));document.getElementById('crops-chips').style.display=type==='crops'?'block':'none';document.getElementById('livestock-chips').style.display=type==='livestock'?'block':'none';}
+
+// ─── UI HELPERS ───────────────────────────────────────────────────
+function showError(msg){const b=document.getElementById('error-box');if(b){b.textContent='⚠️ '+msg;b.classList.add('active');}}
+function clearError(){document.getElementById('error-box')?.classList.remove('active');}
+function setStep(id,state){const el=document.getElementById(id);if(el)el.className='loading-step '+state;}
+function openM(id){
+  document.getElementById(id)?.classList.add('on');
+  const errId = id==='signupM'?'signup-error':id==='loginM'?'login-error':null;
+  if(errId){const e=document.getElementById(errId);if(e)e.style.display='none';}
+}
+function closeM(id){document.getElementById(id)?.classList.remove('on');}
+function swapM(a,b){closeM(a);openM(b);}
+document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('on');}));});
+
+function showFormError(modalId, msg) {
+  const errId = modalId === 'signupM' ? 'signup-error' : 'login-error';
+  const errEl = document.getElementById(errId);
+  if (errEl) { errEl.textContent = '⚠️ ' + msg; errEl.style.display = 'block'; }
+}
+
+function setModalLoading(modalId, loading) {
+  const btnId = modalId === 'signupM' ? 'signup-btn' : 'login-btn';
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.disabled = loading;
+  if (loading) { btn.dataset.originalText = btn.textContent; btn.innerHTML = '<div style="width:14px;height:14px;border:2px solid rgba(44,58,30,.3);border-top-color:var(--ink);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px;"></div>Please wait...'; }
+  else { btn.innerHTML = btn.dataset.originalText || btn.innerHTML; }
+}
+
+function showToast(msg, type='info') {
+  let container = document.getElementById('toast-container');
+  if (!container) { container = document.createElement('div'); container.id='toast-container'; container.style.cssText='position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;'; document.body.appendChild(container); }
+  const toast = document.createElement('div');
+  const icon = type==='success'?'✅':type==='error'?'❌':'ℹ️';
+  const bg = type==='success'?'rgba(74,140,63,.1)':type==='error'?'rgba(192,97,43,.1)':'rgba(44,58,30,.1)';
+  const border = type==='success'?'rgba(74,140,63,.3)':type==='error'?'rgba(192,97,43,.3)':'rgba(122,158,95,.3)';
+  toast.style.cssText=`background:white;border:1px solid ${border};border-left:3px solid ${border};border-radius:8px;padding:.75rem 1rem;font-size:.825rem;font-weight:500;display:flex;align-items:center;gap:.5rem;min-width:240px;box-shadow:0 4px 16px rgba(44,58,30,.12);animation:fadeUp .2s ease;`;
+  toast.innerHTML = `${icon} ${msg}`;
+  container.appendChild(toast);
+  setTimeout(()=>toast.remove(), 4000);
+}
+
+// ─── APIS ─────────────────────────────────────────────────────────
+async function fetchSoil(lat,lng){const props=['phh2o','soc','clay','sand','silt','nitrogen'];const params=props.map(p=>`property=${p}`).join('&');const res=await fetch(`https://rest.isric.org/soilgrids/v2.0/properties/query?lon=${lng}&lat=${lat}&${params}&depth=0-5cm&value=mean`,{signal:AbortSignal.timeout(12000)});if(!res.ok)throw new Error(`ISRIC ${res.status}`);return res.json();}
+function parseSoil(raw){const out={};try{(raw.properties?.layers||[]).forEach(l=>{const d=l.depths?.find(d=>d.label==='0-5cm')||l.depths?.[0];const v=d?.values?.mean;if(v==null)return;switch(l.name){case'phh2o':out.ph=(v/10).toFixed(1);break;case'soc':out.organic_carbon=(v/10).toFixed(1);break;case'clay':out.clay_pct=Math.round(v/10);break;case'sand':out.sand_pct=Math.round(v/10);break;case'silt':out.silt_pct=Math.round(v/10);break;case'nitrogen':out.nitrogen=(v/100).toFixed(2);break;}});}catch(e){}if(!out.ph&&!out.clay_pct)return null;out.source='ISRIC SoilGrids (live satellite)';return out;}
+async function fetchClimate(lat,lng){const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,soil_temperature_0cm,soil_moisture_0_to_1cm,precipitation,wind_speed_10m,uv_index&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,et0_fao_evapotranspiration&past_days=90&forecast_days=7&timezone=Africa%2FJohannesburg`;const res=await fetch(url,{signal:AbortSignal.timeout(15000)});if(!res.ok)throw new Error(`Open-Meteo ${res.status}`);return res.json();}
+function parseClimate(raw){const out={};try{const c=raw.current||{},d=raw.daily||{};if(c.temperature_2m!=null)out.current_temp=c.temperature_2m.toFixed(1);if(c.relative_humidity_2m!=null)out.humidity=Math.round(c.relative_humidity_2m);if(c.soil_temperature_0cm!=null)out.soil_temp=c.soil_temperature_0cm.toFixed(1);if(c.soil_moisture_0_to_1cm!=null)out.soil_moisture=c.soil_moisture_0_to_1cm.toFixed(3);if(c.precipitation!=null)out.precip_now=c.precipitation.toFixed(1);if(c.wind_speed_10m!=null)out.wind_speed=c.wind_speed_10m.toFixed(1);if(c.uv_index!=null)out.uv_index=c.uv_index.toFixed(1);const clean=a=>(a||[]).filter(v=>v!=null);const maxT=clean(d.temperature_2m_max),minT=clean(d.temperature_2m_min),prec=clean(d.precipitation_sum),et0=clean(d.et0_fao_evapotranspiration);if(maxT.length)out.avg_max_temp=(maxT.reduce((a,b)=>a+b,0)/maxT.length).toFixed(1);if(minT.length)out.avg_min_temp=(minT.reduce((a,b)=>a+b,0)/minT.length).toFixed(1);if(prec.length){const p90=prec.slice(0,90),f7=prec.slice(90);out.total_precip_90d=p90.reduce((a,b)=>a+b,0).toFixed(0);out.annual_precip_est=(parseFloat(out.total_precip_90d)*(365/90)).toFixed(0);out.dry_days_90d=p90.filter(p=>p<1).length;if(f7.length)out.forecast_7d_rain=f7.reduce((a,b)=>a+b,0).toFixed(1);}if(et0.length)out.et0=(et0.reduce((a,b)=>a+b,0)/et0.length).toFixed(1);out.source='Open-Meteo ERA5/ECMWF (live)';}catch(e){}return out;}
+
+// ─── SCORING ──────────────────────────────────────────────────────
+function scoreItem(item,soil,climate){const ph=parseFloat(soil.ph)||6.5,clay=parseFloat(soil.clay_pct)||25,oc=parseFloat(soil.organic_carbon)||1.5,precip=parseFloat(climate.annual_precip_est)||500,maxT=parseFloat(climate.avg_max_temp||climate.current_temp)||25,minT=parseFloat(climate.avg_min_temp)||10,meanT=(maxT+minT)/2;const r=SCORE_RANGES[item.id]||{ph:[5.5,7.5],precip:[300,900],temp:[15,30],clay:[10,50]};const s1d=(v,mn,mx)=>{if(v<mn)return Math.max(0,1-(mn-v)/(mn*.3+.1));if(v>mx)return Math.max(0,1-(v-mx)/(mx*.3+.1));return 1;};const raw=s1d(ph,r.ph[0],r.ph[1])*.25+s1d(precip,r.precip[0],r.precip[1])*.30+s1d(meanT,r.temp[0],r.temp[1])*.30+s1d(clay,r.clay[0],r.clay[1])*.15+Math.min(oc/15,1)*.05;return Math.round(Math.min(raw,1)*100);}
+function getFactors(item,soil,climate){const f=[],ph=parseFloat(soil.ph)||6.5,precip=parseFloat(climate.annual_precip_est)||500,maxT=parseFloat(climate.avg_max_temp||climate.current_temp)||25,oc=parseFloat(soil.organic_carbon)||0;if(ph>=6&&ph<=7.5)f.push('Good pH');else if(ph<5.5)f.push('Acidic soil');else f.push('Alkaline soil');if(precip>600)f.push('Good rainfall');else if(precip<300)f.push('Low rainfall');else f.push('Moderate rainfall');if(maxT>28)f.push('Hot climate');else if(maxT<18)f.push('Cool climate');else f.push('Warm climate');if(oc>1.8)f.push('Good organic matter');else if(oc<0.8)f.push('Low organic matter');return f.slice(0,3);}
+
+// ─── AI ADVISORY — via Supabase Edge Function ─────────────────────
+async function fetchAdvisory(soil, climate, scored, lat, lng, type) {
+  const top5    = scored.slice(0,5).map(i=>`${i.label}(${i.score}/100)`).join(', ');
+  const bottom3 = scored.slice(-3).map(i=>`${i.label}(${i.score}/100)`).join(', ');
+  const prompt  = `You are a South African agricultural advisor. Give a practical 3-paragraph advisory.
+
+Location: ${lat.toFixed(4)}°S, ${lng.toFixed(4)}°E · Farm type: ${type}
+Top suitability: ${top5} · Lower: ${bottom3}
+Soil (${soil.source||'SA regional'}): pH ${soil.ph}, OC ${soil.organic_carbon} g/kg, Clay ${soil.clay_pct}%, Sand ${soil.sand_pct}%, Type: ${soil.soilType||'determined by texture'}
+Climate (Open-Meteo live): Temp ${climate.current_temp}°C, Max ${climate.avg_max_temp}°C, Min ${climate.avg_min_temp}°C, Rain 90d ${climate.total_precip_90d}mm, Annual est ${climate.annual_precip_est}mm, ET₀ ${climate.et0}mm/day, Moisture ${climate.soil_moisture} m³/m³
+
+Para 1: Opportunities — why top crops suit this land (use real numbers).
+Para 2: Challenges — pH correction, soil amendments, water management.
+Para 3: One concrete first action.
+
+SA-specific. 3–4 sentences each. No bullets.`;
+
+  try {
+    const isDemo = !currentUser || currentUser.id === 'demo';
+    const notConfigured = SUPABASE_URL.includes('YOUR_PROJECT_ID');
+
+    // Demo mode or unconfigured — show scores but explain advisory needs setup
+    if (isDemo || notConfigured) {
+      document.getElementById('advisory-content').innerHTML =
+        `<p class="advisory-text" style="color:rgba(232,213,160,.6)">
+          ${isDemo
+            ? 'AI advisory requires a free account. <a href="#" onclick="openM(\'signupM\')" style="color:var(--sage-light);font-weight:600;">Sign up</a> to enable it.'
+            : 'AI advisory will appear here once you configure your Supabase URL and deploy the Edge Function.'}
+        </p>`;
+      return;
+    }
+
+    const session = await sb.auth.getSession();
+    const token = session.data?.session?.access_token;
+    if (!token) {
+      document.getElementById('advisory-content').innerHTML =
+        `<p class="advisory-text" style="color:rgba(232,213,160,.5)">Session expired — please sign in again to enable AI advisory.</p>`;
+      return;
+    }
+
+    const res = await fetch(ANALYZE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,  // JWT — proves the user is real and authenticated
+      },
+      body: JSON.stringify({ prompt }),
+    });
+
+    if (res.status === 429) {
+      document.getElementById('advisory-content').innerHTML = `<p class="advisory-text" style="color:rgba(232,213,160,.6)">Monthly analysis limit reached. <a href="#" onclick="openPaygate('pro')" style="color:var(--sage-light);">Upgrade to Pro</a> for unlimited analyses.</p>`;
+      return;
+    }
+    if (!res.ok) throw new Error(`${res.status}`);
+
+    const data = await res.json();
+    const text = data.result || '';
+    if (!text) throw new Error('empty');
+
+    // Update usage display from response
+    if (data.usage && currentProfile) {
+      currentProfile.analyses_this_month = data.usage.current;
+      updateUsageBar();
+    }
+
+    const paras = text.trim().split(/\n\n+/).filter(p=>p.trim());
+    document.getElementById('advisory-content').innerHTML = paras.map(p=>`<p class="advisory-text" style="margin-bottom:1rem">${p.replace(/\n/g,' ')}</p>`).join('');
+
+    // Save advisory text for PDF
+    if (lastScored.length) {
+      await saveReport({ score: lastScored[0]?.score, verdict: getVerdict(lastScored[0]?.score), advisory: text });
+    }
+
+  } catch(e) {
+    document.getElementById('advisory-content').innerHTML = `<p class="advisory-text" style="color:rgba(232,213,160,.5)">AI advisory unavailable — review the suitability scores and data panels above for guidance.</p>`;
+  }
+}
+
+function getVerdict(score) {
+  if (!score) return '—';
+  if (score>=80) return 'Excellent'; if (score>=70) return 'Very Good';
+  if (score>=60) return 'Good'; if (score>=45) return 'Fair'; return 'Challenging';
+}
+
+// ─── RENDER RESULTS ───────────────────────────────────────────────
+function renderResults(soil, climate, items, lat, lng) {
+  const sec = document.getElementById('results-section');
+  sec.classList.add('active');
+  sec.scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('results-meta').textContent = `${lat.toFixed(4)}°, ${lng.toFixed(4)}° · ${farmType==='crops'?'Crop':'Livestock'} Analysis · ${soil.source||'Regional estimate'}`;
+  const phSub=soil.ph?(+soil.ph<6?'Acidic':+soil.ph>7.5?'Alkaline':'Optimal'):'Regional estimate';
+  document.getElementById('summary-cards').innerHTML=[{label:'Soil pH',value:soil.ph||'N/A',sub:phSub},{label:'Current Temp',value:climate.current_temp?climate.current_temp+'°C':'N/A',sub:'Live reading'},{label:'Annual Rainfall',value:climate.annual_precip_est?climate.annual_precip_est+'mm':'N/A',sub:'Extrapolated 90d'},{label:'Organic Carbon',value:soil.organic_carbon?soil.organic_carbon+' g/kg':'N/A',sub:'Topsoil 0–5cm'},{label:'Clay Content',value:soil.clay_pct!=null?soil.clay_pct+'%':'N/A',sub:'Soil texture'},{label:'Daily ET₀',value:climate.et0?climate.et0+'mm':'N/A',sub:'Evapotranspiration'}].map(d=>`<div class="summary-card"><div class="summary-card-label">${d.label}</div><div class="summary-card-value">${d.value}</div><div class="summary-card-sub">${d.sub}</div></div>`).join('');
+  const all=farmType==='crops'?CROPS:LIVESTOCK,toScore=items.size>0?all.filter(i=>items.has(i.id)):all;
+  const scored=toScore.map(item=>({...item,score:scoreItem(item,soil,climate),factors:getFactors(item,soil,climate)})).sort((a,b)=>b.score-a.score);
+  lastScored=scored;
+  document.getElementById('reco-label').textContent=`Suitability Rankings — ${scored.length} ${farmType==='crops'?'crops':'livestock'} analysed`;
+  const grid=document.getElementById('reco-grid');grid.innerHTML='';
+  scored.forEach((item,i)=>{const cls=item.score>=70?'score-high':item.score>=45?'score-mid':'score-low';const card=document.createElement('div');card.className=`reco-card ${cls}`;card.style.animationDelay=`${i*.04}s`;card.innerHTML=`<div class="reco-emoji">${item.emoji}</div><div class="reco-name">${item.label}</div><div class="reco-type">${farmType==='crops'?'Crop':'Livestock'} · #${i+1}</div><div class="score-bar-wrap"><div class="score-label-row"><span class="score-label">Suitability</span><span class="score-num">${item.score}/100</span></div><div class="score-bar"><div class="score-fill" style="width:0%" data-width="${item.score}%"></div></div></div><div class="reco-factors">${item.factors.map(f=>`<span class="factor-chip">${f}</span>`).join('')}</div>`;grid.appendChild(card);});
+  requestAnimationFrame(()=>setTimeout(()=>document.querySelectorAll('.score-fill').forEach(el=>el.style.width=el.dataset.width),80));
+  document.getElementById('data-panels').innerHTML=`<div class="data-panel"><div class="data-panel-title">🛰️ Soil — ${soil.source||'SA Regional Estimate'}</div>${[['Soil Type',soil.soilType||'Sandy Clay Loam'],['pH (0–5cm)',soil.ph||'N/A'],['Organic Carbon',soil.organic_carbon?soil.organic_carbon+' g/kg':'N/A'],['Clay',soil.clay_pct!=null?soil.clay_pct+'%':'N/A'],['Sand',soil.sand_pct!=null?soil.sand_pct+'%':'N/A'],['Silt',soil.silt_pct!=null?soil.silt_pct+'%':'N/A'],['Nitrogen',soil.nitrogen?soil.nitrogen+' g/kg':'N/A']].map(([k,v])=>`<div class="data-row"><span class="data-key">${k}</span><span class="data-val">${v}</span></div>`).join('')}</div><div class="data-panel"><div class="data-panel-title">🌦️ Climate — Open-Meteo ERA5 (Live)</div>${[['Current Temp',climate.current_temp?climate.current_temp+'°C':'N/A'],['Humidity',climate.humidity?climate.humidity+'%':'N/A'],['Soil Temp (0cm)',climate.soil_temp?climate.soil_temp+'°C':'N/A'],['Soil Moisture',climate.soil_moisture?climate.soil_moisture+' m³/m³':'N/A'],['Avg Max (90d)',climate.avg_max_temp?climate.avg_max_temp+'°C':'N/A'],['Avg Min (90d)',climate.avg_min_temp?climate.avg_min_temp+'°C':'N/A'],['Total Rain (90d)',climate.total_precip_90d?climate.total_precip_90d+'mm':'N/A'],['Forecast 7d',climate.forecast_7d_rain?climate.forecast_7d_rain+'mm':'N/A'],['Est. Annual',climate.annual_precip_est?climate.annual_precip_est+'mm':'N/A'],['Dry Days (90d)',climate.dry_days_90d!=null?climate.dry_days_90d+' days':'N/A'],['Daily ET₀',climate.et0?climate.et0+'mm':'N/A'],['Wind Speed',climate.wind_speed?climate.wind_speed+' km/h':'N/A']].map(([k,v])=>`<div class="data-row"><span class="data-key">${k}</span><span class="data-val">${v}</span></div>`).join('')}</div>`;
+  const shareRow=document.getElementById('share-row');if(shareRow)shareRow.style.display='flex';
+  fetchAdvisory(soil,climate,scored,lat,lng,farmType);
+}
+
+// ─── MAIN ANALYSE ─────────────────────────────────────────────────
+async function analyseMyLand() {
+  clearError();
+  if (!selectedLat||!selectedLng){showError('Please pin your farm on the map first.');return;}
+
+  // Not logged in → treat as demo (no DB saves, no AI advisory, but map+scores work)
+  if (!currentUser) {
+    currentUser = { id: 'demo', email: 'demo@farmiq.co.za' };
+    currentProfile = { full_name: 'Guest', plan: 'free', analyses_this_month: 0 };
+    showToast('Running in demo mode — sign up to save results and enable AI advisory.', 'info');
+  }
+
+  // Usage limit check — only for real (non-demo) logged-in free users
+  const isDemo = currentUser.id === 'demo';
+  if (!isDemo && currentProfile?.plan === 'free' && getCurrentUsage() >= 3) {
+    openPaygate('pro'); return;
+  }
+
+  const overlay=document.getElementById('loading-overlay');overlay.classList.add('active');
+  document.getElementById('analyse-btn').disabled=true;
+  document.getElementById('results-section').classList.remove('active');
+  const shareRow=document.getElementById('share-row');if(shareRow)shareRow.style.display='none';
+  setStep('step-soil','active');setStep('step-climate','');setStep('step-ai','');
+
+  let soil=null,climate={};
+  const [soilRaw,climateRaw]=await Promise.all([fetchSoil(selectedLat,selectedLng).catch(e=>{console.warn('ISRIC:',e.message);return null;}),fetchClimate(selectedLat,selectedLng).catch(e=>{console.warn('Open-Meteo:',e.message);return null;})]);
+  setStep('step-soil','done');setStep('step-climate','done');setStep('step-ai','active');
+  if(soilRaw)soil=parseSoil(soilRaw);
+  if(!soil){const fb=getSASoilFallback(selectedLat,selectedLng);soil={...fb,source:`SA Regional Soil Database (ISRIC offline — ${fb.soilType})`};console.info('Using SA soil fallback for',selectedLat,selectedLng);}
+  if(climateRaw)climate=parseClimate(climateRaw);
+  if(!climate.annual_precip_est){climate.annual_precip_est=Math.round(300+(selectedLng-17)*18).toString();climate.avg_max_temp='26.0';climate.avg_min_temp='12.0';climate.current_temp='22.0';climate.total_precip_90d=Math.round(parseFloat(climate.annual_precip_est)/4).toString();climate.dry_days_90d=45;climate.et0='4.5';climate.source='Estimated (Open-Meteo unavailable)';}
+  lastSoil=soil;lastClimate=climate;
+  await new Promise(r=>setTimeout(r,350));setStep('step-ai','done');
+  overlay.classList.remove('active');document.getElementById('analyse-btn').disabled=false;
+  renderResults(soil,climate,selectedItems,selectedLat,selectedLng);
+}
+
+// ─── PDF ──────────────────────────────────────────────────────────
+function downloadPDF(){const{jsPDF}=window.jspdf||{};if(!jsPDF){alert('PDF library loading — try again in a moment.');return;}if(!lastScored.length){alert('Please run an analysis first.');return;}const soil=lastSoil,climate=lastClimate,scored=lastScored,lat=selectedLat,lng=selectedLng;const doc=new jsPDF({unit:'mm',format:'a4'});const W=210,M=18;const GREEN=[44,107,54],DKGREEN=[26,58,30],LTGREEN=[168,196,138],INK=[26,34,16],MUTED=[100,120,80],GOLD=[180,130,20],RED=[180,60,40];let y=0;doc.setFillColor(...DKGREEN);doc.rect(0,0,W,42,'F');doc.setFillColor(...GREEN);doc.rect(0,40,W,2,'F');doc.setTextColor(232,213,160);doc.setFontSize(22);doc.setFont('helvetica','bold');doc.text('FarmIQ',M,16);doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...LTGREEN);doc.text('Land Intelligence Report',M,24);doc.text(`Generated: ${new Date().toLocaleDateString('en-ZA',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}`,M,31);const topScore=scored[0]?.score||0;const scoreCol=topScore>=70?GREEN:topScore>=45?GOLD:RED;doc.setFillColor(...scoreCol);doc.circle(W-M-14,20,14,'F');doc.setFillColor(...DKGREEN);doc.circle(W-M-14,20,10,'F');doc.setTextColor(...scoreCol);doc.setFontSize(14);doc.setFont('helvetica','bold');doc.text(String(topScore),W-M-14,17.5,{align:'center'});doc.setFontSize(6);doc.setFont('helvetica','normal');doc.text('/100',W-M-14,23,{align:'center'});doc.text('TOP SCORE',W-M-14,27.5,{align:'center'});y=52;doc.setTextColor(...INK);doc.setFontSize(13);doc.setFont('helvetica','bold');doc.text(`📍 ${lat.toFixed(5)}°S, ${lng.toFixed(5)}°E`,M,y);y+=7;doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...MUTED);doc.text(`Farm type: ${farmType==='crops'?'Crop Analysis':'Livestock Analysis'} · Soil: ${soil.source||'SA Regional'} · Climate: Open-Meteo ERA5`,M,y);y+=5;doc.setDrawColor(...GREEN);doc.setLineWidth(0.4);doc.line(M,y,W-M,y);y+=7;const boxH=52;doc.setFillColor(237,242,232);doc.roundedRect(M,y,82,boxH,3,3,'F');doc.setFontSize(7);doc.setFont('helvetica','bold');doc.setTextColor(...GREEN);doc.text('🛰️ SOIL DATA',M+4,y+6);doc.setTextColor(...MUTED);doc.text(soil.source||'SA Regional',M+4,y+11);doc.setFont('helvetica','normal');[[  'Soil Type',soil.soilType||'Sandy Clay Loam'],['pH (0–5cm)',soil.ph||'N/A'],['Organic C',soil.organic_carbon?soil.organic_carbon+' g/kg':'N/A'],['Clay / Sand',soil.clay_pct!=null&&soil.sand_pct!=null?`${soil.clay_pct}% / ${soil.sand_pct}%`:'N/A'],['Nitrogen',soil.nitrogen?soil.nitrogen+' g/kg':'N/A']].forEach(([k,v],i)=>{let ry=y+18+i*7;doc.setTextColor(...MUTED);doc.setFontSize(6.5);doc.text(k,M+4,ry);doc.setTextColor(...INK);doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.text(String(v),M+44,ry);doc.setFont('helvetica','normal');});doc.setFillColor(237,242,232);doc.roundedRect(M+86,y,82,boxH,3,3,'F');doc.setFontSize(7);doc.setFont('helvetica','bold');doc.setTextColor(...GREEN);doc.text('🌦️ CLIMATE (LIVE)',M+90,y+6);doc.setTextColor(...MUTED);doc.text('Open-Meteo ERA5/ECMWF',M+90,y+11);doc.setFont('helvetica','normal');[['Current Temp',climate.current_temp?climate.current_temp+'°C':'N/A'],['Avg Max (90d)',climate.avg_max_temp?climate.avg_max_temp+'°C':'N/A'],['Total Rain 90d',climate.total_precip_90d?climate.total_precip_90d+'mm':'N/A'],['Est. Annual',climate.annual_precip_est?climate.annual_precip_est+'mm':'N/A'],['ET₀ / Humidity',climate.et0&&climate.humidity?`${climate.et0}mm / ${climate.humidity}%`:'N/A']].forEach(([k,v],i)=>{let cy=y+18+i*7;doc.setTextColor(...MUTED);doc.setFontSize(6.5);doc.text(k,M+90,cy);doc.setTextColor(...INK);doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.text(String(v),M+130,cy);doc.setFont('helvetica','normal');});y+=boxH+10;doc.line(M,y-4,W-M,y-4);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...GREEN);doc.text(`${farmType==='crops'?'🌱 CROP':'🐄 LIVESTOCK'} SUITABILITY RANKINGS`,M,y);y+=7;scored.slice(0,8).forEach((item,i)=>{const score=item.score,barCol=score>=70?GREEN:score>=45?GOLD:RED,barW=60*(score/100);doc.setFillColor(245,250,242);doc.roundedRect(M,y-3,W-2*M,11,2,2,'F');doc.setFontSize(9);doc.text(item.emoji||'',M+2,y+4);doc.setTextColor(...INK);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text(item.label,M+10,y+4);doc.setFont('helvetica','normal');doc.setTextColor(...MUTED);doc.setFontSize(6.5);doc.text(item.factors.join(' · '),M+10,y+8.5);doc.setFillColor(220,230,215);doc.roundedRect(W-M-72,y,60,4,1,1,'F');doc.setFillColor(...barCol);doc.roundedRect(W-M-72,y,Math.max(barW,1),4,1,1,'F');doc.setTextColor(...barCol);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.text(`${score}/100`,W-M-8,y+5,{align:'right'});y+=13;if(y>260&&i<7){doc.addPage();doc.setFillColor(250,247,240);doc.rect(0,0,210,297,'F');y=20;}});y+=4;doc.line(M,y,W-M,y);y+=8;doc.setFillColor(...DKGREEN);doc.roundedRect(M,y,W-2*M,8,2,2,'F');doc.setTextColor(232,213,160);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text('🤖 AI FARM ADVISORY',M+4,y+5.5);y+=14;const advEl=document.getElementById('advisory-content');const advText=advEl?advEl.innerText.replace(/\n+/g,' ').trim():'Advisory not yet generated.';doc.setTextColor(...INK);doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setFillColor(245,250,242);doc.roundedRect(M,y-2,W-2*M,38,2,2,'F');doc.splitTextToSize(advText,W-2*M-8).slice(0,12).forEach(line=>{doc.text(line,M+4,y+4);y+=5;});doc.setFillColor(...DKGREEN);doc.rect(0,282,W,15,'F');doc.setFillColor(...GREEN);doc.rect(0,282,W,.8,'F');doc.setTextColor(...LTGREEN);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text('FarmIQ · farmiq.co.za · Real ISRIC + Open-Meteo + Claude AI',M,288);doc.setTextColor(150,180,130);doc.text('Recommendations are advisory only. Always consult a qualified agronomist.',M,293);doc.text(`Page 1 · ${new Date().getFullYear()}`,W-M,293,{align:'right'});doc.save(`FarmIQ_Report_${lat.toFixed(3)}_${lng.toFixed(3)}_${new Date().toISOString().slice(0,10)}.pdf`);}
+
+// ─── WHATSAPP ─────────────────────────────────────────────────────
+function shareWhatsApp(){if(!lastScored.length)return;const top3=lastScored.slice(0,3).map(i=>`${i.emoji} ${i.label}(${i.score}/100)`).join(', ');const msg=`🌿 *FarmIQ Land Report*\n\n📍 ${selectedLat.toFixed(4)}°, ${selectedLng.toFixed(4)}°\n🪨 ${lastSoil.soilType||'N/A'} · pH ${lastSoil.ph||'N/A'}\n🌡️ ${lastClimate.current_temp||'N/A'}°C · ${lastClimate.total_precip_90d||'N/A'}mm/90d\n\n🏆 Top: ${top3}\n\n_farmiq.co.za_`;window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,'_blank');}
+
+// ─── RESET ────────────────────────────────────────────────────────
+function resetAnalysis(){document.getElementById('results-section').classList.remove('active');const s=document.getElementById('share-row');if(s)s.style.display='none';document.getElementById('analyser')?.scrollIntoView({behavior:'smooth'});}
+
+// ─── PAYGATE (stub — replace with real PayFast) ───────────────────
+function openPaygate(plan){}  // placeholder
+
+// ─── SCROLL OBSERVER ──────────────────────────────────────────────
+function initScrollObserver(){const obs=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');}),{threshold:.15});document.querySelectorAll('.fade-in-up').forEach(el=>obs.observe(el));}
+
+// ─── BOOT ─────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  buildChips();
+  initScrollObserver();
+  updateUsageBar();
+  // Attempt to restore session on page load (Supabase does this automatically
+  // via persistSession:true, but we refresh profile state explicitly)
+  sb.auth.getSession().then(({ data }) => {
+    if (data.session) loadProfile().then(updateUsageBar);
+  });
+});
+</script>
+</body>
+</html>
