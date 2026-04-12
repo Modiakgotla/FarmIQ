@@ -932,6 +932,62 @@
   <button onclick="saveFarmFromModal()" style="width:100%;padding:.85rem;background:var(--sage);color:var(--ink);border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;">💾 Save Farm Profile</button>
 </div></div>
 
+<script>
+// ── Early stubs ──────────────────────────────────────────────────
+// All onclick handlers in HTML fire before the main <script> at the
+// bottom finishes parsing. These stubs queue the calls and re-fire
+// them once the main script is ready.
+var _earlyQueue = [];
+var _mainReady  = false;
+
+function _stub(name) {
+  return function() {
+    var args = Array.prototype.slice.call(arguments);
+    if (_mainReady && window[name] && window[name] !== window['_stub_'+name]) {
+      window[name].apply(window, args);
+    } else {
+      _earlyQueue.push({fn: name, args: args});
+    }
+  };
+}
+
+// Modal helpers — defined fully here so they work immediately
+function openM(id){
+  var el=document.getElementById(id);
+  if(el){el.classList.add('on');el.style.display='flex';}
+  var errId=id==='signupM'?'signup-error':id==='loginM'?'login-error':null;
+  if(errId){var e=document.getElementById(errId);if(e)e.style.display='none';}
+}
+function closeM(id){
+  var el=document.getElementById(id);
+  if(el){el.classList.remove('on');el.style.display='none';}
+}
+function swapM(a,b){closeM(a);openM(b);}
+
+// Stubs for functions defined later in the main script
+var doSignup        = _stub('doSignup');
+var doLogin         = _stub('doLogin');
+var doLogout        = _stub('doLogout');
+var doForgotPassword= _stub('doForgotPassword');
+var demoGo          = _stub('demoGo');
+var setFarmType     = _stub('setFarmType');
+var analyseMyLand   = _stub('analyseMyLand');
+var resetAnalysis   = _stub('resetAnalysis');
+var useMyLocation   = _stub('useMyLocation');
+var downloadPDF     = _stub('downloadPDF');
+var shareWhatsApp   = _stub('shareWhatsApp');
+var saveFarmFromModal = _stub('saveFarmFromModal');
+var openPaygate     = _stub('openPaygate');
+
+// Called at the end of the main script to flush queued calls
+function _flushQueue() {
+  _mainReady = true;
+  _earlyQueue.forEach(function(item) {
+    if (window[item.fn]) window[item.fn].apply(window, item.args);
+  });
+  _earlyQueue = [];
+}
+</script>
 <style>.overlay.on{display:flex!important;} @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}} @keyframes spin{to{transform:rotate(360deg)}}</style>
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // ═══════════════════════════════════════════════════════════════════
@@ -1664,4 +1720,15 @@ document.addEventListener('DOMContentLoaded', () => {
   buildChips();
   initScrollObserver();
   updateUsageBar();
-  // Attempt to restore session on page load (S
+  // Restore session on page load
+  if (typeof sb !== 'undefined') {
+    sb.auth.getSession().then(({ data }) => {
+      if (data.session) loadProfile().then(updateUsageBar);
+    });
+  }
+  // Flush any onclick calls that fired before this script finished loading
+  if (typeof _flushQueue === 'function') _flushQueue();
+});
+</script>
+</body>
+</html>
