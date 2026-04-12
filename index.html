@@ -635,7 +635,15 @@
   <div class="nav-logo">Farm<span>IQ</span></div>
   <div class="nav-right">
     <span class="nav-badge">🛰️ Live satellite data</span>
-    <a href="#analyser" class="nav-link" style="display:none" id="nav-cta">Analyse My Land</a>
+    <div id="nav-logged-out" style="display:flex;align-items:center;gap:.75rem;">
+      <a onclick="openM('loginM')" class="nav-link" style="cursor:pointer;">Sign In</a>
+      <button onclick="openM('signupM')" style="background:var(--sage);color:var(--ink);border:none;border-radius:6px;padding:.45rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;">Sign Up Free</button>
+    </div>
+    <div id="nav-logged-in" style="display:none;align-items:center;gap:.75rem;">
+      <span id="nav-username" style="font-size:.85rem;color:var(--sage-light);"></span>
+      <a href="#analyser" class="nav-link">Analyse</a>
+      <button onclick="doLogout()" style="background:transparent;color:rgba(232,213,160,.6);border:1px solid rgba(168,196,138,.3);border-radius:6px;padding:.4rem .9rem;font-family:'DM Sans',sans-serif;font-size:.82rem;cursor:pointer;">Sign Out</button>
+    </div>
   </div>
 </nav>
 
@@ -648,10 +656,13 @@
   <h1>Know what <em>grows</em><br>on your land</h1>
   <p class="hero-sub">Drop a pin anywhere in South Africa. Get a full report on which crops and livestock will thrive on your exact land — based on live satellite data.</p>
   <div class="hero-cta-group">
-    <a href="#analyser" class="btn-primary">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      Analyse My Land — Free
-    </a>
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;">
+      <a href="#analyser" class="btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Analyse My Land — Free
+      </a>
+      <button onclick="openM('signupM')" style="background:transparent;color:var(--sage-light);border:2px solid rgba(122,158,95,.5);border-radius:6px;padding:.95rem 2rem;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:600;cursor:pointer;transition:all .2s;">Create Free Account →</button>
+    </div>
     <div class="hero-trust">
       <div class="hero-trust-item">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -852,7 +863,7 @@
   <div class="footer-links">
     <a href="#" class="footer-link">Privacy Policy</a>
     <a href="#" class="footer-link">Terms of Use</a>
-    <a href="mailto:hello@farmiq.co.za" class="footer-link">hello@farmiq.co.za</a>
+    <a href="/cdn-cgi/l/email-protection#e189848d8d8ea18780938c8890cf828ecf9b80" class="footer-link"><span class="__cf_email__" data-cfemail="4c24292020230c2a2d3e21253d622f2362362d">[email&#160;protected]</span></a>
   </div>
   <div class="footer-copy">© 2026 FarmIQ · Free for South African farmers</div>
 </footer>
@@ -922,7 +933,7 @@
 </div></div>
 
 <style>.overlay.on{display:flex!important;} @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}} @keyframes spin{to{transform:rotate(360deg)}}</style>
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // ═══════════════════════════════════════════════════════════════════
 //  FarmIQ — Supabase Edition
 //  Real auth · Real DB · Row Level Security · Secure API proxy
@@ -932,10 +943,10 @@
 // SUPABASE_URL is set. Replace SUPABASE_ANON_KEY with your anon key from:
 // Supabase Dashboard → Settings → API Keys → Legacy anon, service_role API keys → anon key
 const SUPABASE_URL    = 'https://tlkluxwrzjzxruqakftp.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsa2x1eHdyemp6eHJ1cWFrZnRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NDU1NDQsImV4cCI6MjA4OTUyMTU0NH0.dCH2A8XLGt5op_sbutkFwgZGN3nOaRQALz4xhXmvdKc'; // ← paste your anon key here
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsa2x1eHdyemp6eHJ1cWFrZnRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NDU1NDQsImV4cCI6MjA4OTUyMTU0NH0.dCH2A8XLGt5op_sbutkFwgZGN3nOaRQALz4xhXmvdKc';
 
 // The Edge Function URL for the secure Claude proxy
-// Format: https://YOUR_PROJECT_ID.supabase.co/functions/v1/analyze
+// Edge Function URL — auto-built from SUPABASE_URL above
 const ANALYZE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/analyze`;
 
 // ─── INIT SUPABASE CLIENT ─────────────────────────────────────────
@@ -1076,14 +1087,18 @@ function getFirstName() {
 }
 
 function updateNavForLoggedIn() {
-  document.getElementById('navSignIn')?.style.setProperty('display', 'none');
-  document.getElementById('navStart')?.textContent && (document.getElementById('navStart').textContent = 'Dashboard →');
-  document.getElementById('navStart')?.removeAttribute('onclick');
-  document.getElementById('navStart')?.addEventListener('click', () => window.location.hash = '#analyser');
+  const out = document.getElementById('nav-logged-out');
+  const inn = document.getElementById('nav-logged-in');
+  const nm  = document.getElementById('nav-username');
+  if (out) out.style.display = 'none';
+  if (inn) inn.style.display = 'flex';
+  if (nm)  nm.textContent = '👤 ' + getFirstName();
 }
 function updateNavForLoggedOut() {
-  document.getElementById('navSignIn')?.style.removeProperty('display');
-  if (document.getElementById('navStart')) document.getElementById('navStart').textContent = 'Start Free →';
+  const out = document.getElementById('nav-logged-out');
+  const inn = document.getElementById('nav-logged-in');
+  if (out) out.style.display = 'flex';
+  if (inn) inn.style.display = 'none';
 }
 
 // ─── AUTH ACTIONS ─────────────────────────────────────────────────
@@ -1506,7 +1521,7 @@ SA-specific. 3–4 sentences each. No bullets.`;
 
   try {
     const isDemo = !currentUser || currentUser.id === 'demo';
-    const notConfigured = SUPABASE_URL.includes('YOUR_PROJECT_ID');
+    const notConfigured = false; // URL is configured
 
     // Demo mode or unconfigured — show scores but explain advisory needs setup
     if (isDemo || notConfigured) {
@@ -1649,12 +1664,4 @@ document.addEventListener('DOMContentLoaded', () => {
   buildChips();
   initScrollObserver();
   updateUsageBar();
-  // Attempt to restore session on page load (Supabase does this automatically
-  // via persistSession:true, but we refresh profile state explicitly)
-  sb.auth.getSession().then(({ data }) => {
-    if (data.session) loadProfile().then(updateUsageBar);
-  });
-});
-</script>
-</body>
-</html>
+  // Attempt to restore session on page load (S
