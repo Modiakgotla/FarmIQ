@@ -1120,52 +1120,53 @@ async function doSignup() {
   if (!fn || !em || !pw) { showFormError('signupM', 'Please fill in your name, email and password.'); return; }
   if (pw.length < 8)     { showFormError('signupM', 'Password must be at least 8 characters.'); return; }
 
-  setModalLoading('signupM', true);
+  const btn = document.getElementById('signup-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating account...'; }
 
-  const { data, error } = await sb.auth.signUp({
-    email: em,
-    password: pw,
-    options: {
-      data: { full_name: `${fn} ${ln}`.trim() }
+  try {
+    const { data, error } = await sb.auth.signUp({
+      email: em, password: pw,
+      options: { data: { full_name: `${fn} ${ln}`.trim() } }
+    });
+
+    if (error) { showFormError('signupM', error.message); return; }
+
+    if (data.user) {
+      await sb.from('profiles').update({ full_name: `${fn} ${ln}`.trim(), phone: ph, province: prov }).eq('id', data.user.id);
     }
-  });
 
-  setModalLoading('signupM', false);
-
-  if (error) { showFormError('signupM', error.message); return; }
-
-  // Update profile with extra fields
-  if (data.user) {
-    await sb.from('profiles').update({ full_name: `${fn} ${ln}`.trim(), phone: ph, province: prov }).eq('id', data.user.id);
+    closeM('signupM');
+    showToast('Account created! You can now sign in.', 'success');
+  } catch(e) {
+    showFormError('signupM', 'Connection failed. Check your internet and try again.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🚀 Create Free Account'; }
   }
-
-  // Supabase sends a confirmation email by default.
-  // If you want instant access (no email confirm), disable it in:
-  // Supabase Dashboard → Auth → Providers → Email → "Confirm email" toggle OFF
-  closeM('signupM');
-  showToast('Account created! Check your email to confirm, then sign in.', 'success');
 }
 
 async function doLogin() {
   const em = document.getElementById('lem')?.value.trim();
   const pw = document.getElementById('lpw')?.value;
+  const btn = document.getElementById('login-btn');
 
   if (!em || !pw) { showFormError('loginM', 'Please enter your email and password.'); return; }
 
-  setModalLoading('loginM', true);
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in...'; }
 
-  const { error } = await sb.auth.signInWithPassword({ email: em, password: pw });
-
-  setModalLoading('loginM', false);
-
-  if (error) {
-    showFormError('loginM', error.message === 'Invalid login credentials'
-      ? 'Incorrect email or password. Please try again.'
-      : error.message
-    );
-    return;
+  try {
+    const { error } = await sb.auth.signInWithPassword({ email: em, password: pw });
+    if (error) {
+      showFormError('loginM', error.message === 'Invalid login credentials'
+        ? 'Incorrect email or password. Please try again.'
+        : error.message
+      );
+    }
+    // on success: onAuthStateChange fires → closes modal automatically
+  } catch(e) {
+    showFormError('loginM', 'Connection failed. Check your internet and try again.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Sign In →'; }
   }
-  // onAuthStateChange fires automatically → closes modal + shows dashboard
 }
 
 async function doLogout() {
