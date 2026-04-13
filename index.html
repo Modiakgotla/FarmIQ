@@ -933,25 +933,9 @@
 </div></div>
 
 <script>
-// ── Early stubs ──────────────────────────────────────────────────
-// All onclick handlers in HTML fire before the main <script> at the
-// bottom finishes parsing. These stubs queue the calls and re-fire
-// them once the main script is ready.
-var _earlyQueue = [];
-var _mainReady  = false;
-
-function _stub(name) {
-  return function() {
-    var args = Array.prototype.slice.call(arguments);
-    if (_mainReady && window[name] && window[name] !== window['_stub_'+name]) {
-      window[name].apply(window, args);
-    } else {
-      _earlyQueue.push({fn: name, args: args});
-    }
-  };
-}
-
-// Modal helpers — defined fully here so they work immediately
+// ── Safe call wrappers ───────────────────────────────────────────
+// HTML onclick handlers call these wrappers which wait until the
+// main script has fully loaded before executing the real function.
 function openM(id){
   var el=document.getElementById(id);
   if(el){el.classList.add('on');el.style.display='flex';}
@@ -964,29 +948,35 @@ function closeM(id){
 }
 function swapM(a,b){closeM(a);openM(b);}
 
-// Stubs for functions defined later in the main script
-var doSignup        = _stub('doSignup');
-var doLogin         = _stub('doLogin');
-var doLogout        = _stub('doLogout');
-var doForgotPassword= _stub('doForgotPassword');
-var demoGo          = _stub('demoGo');
-var setFarmType     = _stub('setFarmType');
-var analyseMyLand   = _stub('analyseMyLand');
-var resetAnalysis   = _stub('resetAnalysis');
-var useMyLocation   = _stub('useMyLocation');
-var downloadPDF     = _stub('downloadPDF');
-var shareWhatsApp   = _stub('shareWhatsApp');
-var saveFarmFromModal = _stub('saveFarmFromModal');
-var openPaygate     = _stub('openPaygate');
-
-// Called at the end of the main script to flush queued calls
-function _flushQueue() {
-  _mainReady = true;
-  _earlyQueue.forEach(function(item) {
-    if (window[item.fn]) window[item.fn].apply(window, item.args);
-  });
-  _earlyQueue = [];
+function _call(name,args){
+  if(typeof window['_fn_'+name]==='function'){
+    window['_fn_'+name].apply(window,args||[]);
+  } else {
+    setTimeout(function(){_call(name,args);},100);
+  }
 }
+
+function doSignup(){_call('doSignup');}
+function doLogin(){_call('doLogin');}
+function doLogout(){_call('doLogout');}
+function doForgotPassword(){_call('doForgotPassword');}
+function demoGo(){_call('demoGo');}
+function setFarmType(t){_call('setFarmType',[t]);}
+function analyseMyLand(){_call('analyseMyLand');}
+function _fn_resetAnalysis(){_call('resetAnalysis');}
+function _fn_useMyLocation(e){_call('useMyLocation',[e]);}
+function _fn_downloadPDF(){_call('downloadPDF');}
+function _fn_shareWhatsApp(){_call('shareWhatsApp');}
+function saveFarmFromModal(){_call('saveFarmFromModal');}
+function _fn_openPaygate(p){_call('openPaygate',[p]);}
+function _fn_toggleChip(c,id){_call('toggleChip',[c,id]);}
+function downloadReportPDF(id){_call('downloadReportPDF',[id]);}
+function deleteReport(id){_call('deleteReport',[id]);}
+function deleteFarm(id){_call('deleteFarm',[id]);}
+function _fn_analyseThisFarm(la,ln){_call('analyseThisFarm',[la,ln]);}
+function openReportDetail(id){_call('openReportDetail',[id]);}
+function shareReportWA(id){_call('shareReportWA',[id]);}
+function _flushQueue(){}
 </script>
 <style>.overlay.on{display:flex!important;} @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}} @keyframes spin{to{transform:rotate(360deg)}}</style>
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
@@ -1159,7 +1149,7 @@ function updateNavForLoggedOut() {
 
 // ─── AUTH ACTIONS ─────────────────────────────────────────────────
 
-async function doSignup() {
+async function _fn_doSignup() {
   const fn   = document.getElementById('sfn')?.value.trim();
   const ln   = document.getElementById('sln')?.value.trim();
   const em   = document.getElementById('sem')?.value.trim();
@@ -1196,7 +1186,7 @@ async function doSignup() {
   showToast('Account created! Check your email to confirm, then sign in.', 'success');
 }
 
-async function doLogin() {
+async function _fn_doLogin() {
   const em = document.getElementById('lem')?.value.trim();
   const pw = document.getElementById('lpw')?.value;
 
@@ -1218,12 +1208,12 @@ async function doLogin() {
   // onAuthStateChange fires automatically → closes modal + shows dashboard
 }
 
-async function doLogout() {
+async function _fn_doLogout() {
   await sb.auth.signOut();
   showToast('Signed out successfully.', 'info');
 }
 
-async function doForgotPassword() {
+async function _fn_doForgotPassword() {
   const em = prompt('Enter your email address to reset your password:');
   if (!em) return;
   const { error } = await sb.auth.resetPasswordForEmail(em, {
@@ -1234,7 +1224,7 @@ async function doForgotPassword() {
 }
 
 // Demo mode — creates an anonymous guest session so the UI works without signup
-async function demoGo() {
+async function _fn_demoGo() {
   closeM('loginM'); closeM('signupM');
   // Use a fake local user object for demo — no Supabase call, no DB writes
   currentUser = { id: 'demo', email: 'demo@farmiq.co.za' };
@@ -1304,7 +1294,7 @@ async function saveFarm(farmData) {
   return data;
 }
 
-async function deleteFarm(id) {
+async function _fn_deleteFarm(id) {
   if (!currentUser || currentUser.id === 'demo') return;
   if (!confirm('Remove this farm profile?')) return;
   const { error } = await sb.from('farms').delete().eq('id', id).eq('user_id', currentUser.id);
@@ -1340,7 +1330,7 @@ async function renderFarms() {
   });
 }
 
-async function saveFarmFromModal() {
+async function _fn_saveFarmFromModal() {
   const name = document.getElementById('farmName')?.value.trim();
   const lat  = document.getElementById('farmLat')?.value.trim();
   const lng  = document.getElementById('farmLng')?.value.trim();
@@ -1354,7 +1344,7 @@ async function saveFarmFromModal() {
   if (result) { closeM('addFarmM'); renderFarms(); ['farmName','farmLat','farmLng','farmCrops','farmNotes'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).value=''; }); }
 }
 
-function analyseThisFarm(lat, lng) {
+function _fn_analyseThisFarm(lat, lng) {
   if (document.getElementById('inLat')) document.getElementById('inLat').value = lat;
   if (document.getElementById('inLng')) document.getElementById('inLng').value = lng;
   syncMapFromInputs();
@@ -1396,7 +1386,7 @@ async function loadReports() {
   return data || [];
 }
 
-async function deleteReport(id) {
+async function _fn_deleteReport(id) {
   if (!currentUser || currentUser.id === 'demo') return;
   if (!confirm('Delete this report?')) return;
   await sb.from('reports').delete().eq('id', id).eq('user_id', currentUser.id);
@@ -1431,7 +1421,7 @@ async function renderReports() {
   }).join('');
 }
 
-async function openReportDetail(id) {
+async function _fn_openReportDetail(id) {
   const reports = await loadReports();
   const r = reports.find(x => x.id === id);
   if (!r) return;
@@ -1458,7 +1448,7 @@ async function openReportDetail(id) {
   openM('reportDetailM');
 }
 
-async function downloadReportPDF(id) {
+async function _fn_downloadReportPDF(id) {
   const reports = await loadReports();
   const r = reports.find(x => x.id === id);
   if (!r) return;
@@ -1474,7 +1464,7 @@ async function downloadReportPDF(id) {
   selectedLat = backup.lat; selectedLng = backup.lng;
 }
 
-async function shareReportWA(id) {
+async function _fn_shareReportWA(id) {
   const reports = await loadReports();
   const r = reports.find(x => x.id === id);
   if (!r) return;
@@ -1500,12 +1490,12 @@ function initMap() {
 }
 function setPin(lat,lng){selectedLat=lat;selectedLng=lng;const ld=document.getElementById('lat-display');const lng2=document.getElementById('lng-display');if(ld)ld.textContent=lat.toFixed(5);if(lng2)lng2.textContent=lng.toFixed(5);const icon=L.divIcon({className:'',html:`<div style="width:22px;height:22px;background:var(--sage);border:3px solid white;border-radius:50%;box-shadow:0 2px 10px rgba(122,158,95,.6);"></div>`,iconSize:[22,22],iconAnchor:[11,11]});if(marker)map.removeLayer(marker);marker=L.marker([lat,lng],{icon}).bindPopup(`<b style="color:#4a6232;">📍 Farm Location</b><br><small>${lat.toFixed(4)}°, ${lng.toFixed(4)}°</small>`).addTo(map).openPopup();}
 function syncMapFromInputs(){const lat=parseFloat(document.getElementById('inLat')?.value);const lng=parseFloat(document.getElementById('inLng')?.value);if(!isNaN(lat)&&!isNaN(lng)&&map&&lat>=-35&&lat<=-21&&lng>=16&&lng<=33.5){setPin(lat,lng);if(map.getZoom()<8)map.flyTo([lat,lng],10,{duration:.8});else map.panTo([lat,lng]);}}
-function useMyLocation(e){if(e)e.preventDefault();if(!navigator.geolocation){showError('Geolocation not supported.');return;}navigator.geolocation.getCurrentPosition(p=>{const{latitude:lat,longitude:lng}=p.coords;if(lat<-35||lat>-21||lng<16||lng>33.5){showError('Outside SA — pin manually.');return;}clearError();setPin(lat,lng);map.flyTo([lat,lng],12,{duration:1.2});},()=>showError('Could not get location — click map instead.'),{timeout:10000,maximumAge:60000});}
+function _fn_useMyLocation(e){if(e)e.preventDefault();if(!navigator.geolocation){showError('Geolocation not supported.');return;}navigator.geolocation.getCurrentPosition(p=>{const{latitude:lat,longitude:lng}=p.coords;if(lat<-35||lat>-21||lng<16||lng>33.5){showError('Outside SA — pin manually.');return;}clearError();setPin(lat,lng);map.flyTo([lat,lng],12,{duration:1.2});},()=>showError('Could not get location — click map instead.'),{timeout:10000,maximumAge:60000});}
 
 // ─── CHIPS ────────────────────────────────────────────────────────
 function buildChips(){const cg=document.getElementById('crop-chip-grid');CROPS.forEach(c=>{const ch=document.createElement('button');ch.className='chip';ch.dataset.id=c.id;ch.innerHTML=`${c.emoji} ${c.label}`;ch.onclick=()=>toggleChip(ch,c.id);cg.appendChild(ch);});const lg=document.getElementById('livestock-chip-grid');LIVESTOCK.forEach(l=>{const ch=document.createElement('button');ch.className='chip';ch.dataset.id=l.id;ch.innerHTML=`${l.emoji} ${l.label}`;ch.onclick=()=>toggleChip(ch,l.id);lg.appendChild(ch);});}
-function toggleChip(chip,id){if(selectedItems.has(id)){selectedItems.delete(id);chip.classList.remove('selected');}else{selectedItems.add(id);chip.classList.add('selected');}}
-function setFarmType(type){farmType=type;selectedItems.clear();document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected'));document.querySelectorAll('.toggle-btn').forEach(b=>b.classList.toggle('active',b.dataset.type===type));document.getElementById('crops-chips').style.display=type==='crops'?'block':'none';document.getElementById('livestock-chips').style.display=type==='livestock'?'block':'none';}
+function _fn_toggleChip(chip,id){if(selectedItems.has(id)){selectedItems.delete(id);chip.classList.remove('selected');}else{selectedItems.add(id);chip.classList.add('selected');}}
+function _fn_setFarmType(type){farmType=type;selectedItems.clear();document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected'));document.querySelectorAll('.toggle-btn').forEach(b=>b.classList.toggle('active',b.dataset.type===type));document.getElementById('crops-chips').style.display=type==='crops'?'block':'none';document.getElementById('livestock-chips').style.display=type==='livestock'?'block':'none';}
 
 // ─── UI HELPERS ───────────────────────────────────────────────────
 function showError(msg){const b=document.getElementById('error-box');if(b){b.textContent='⚠️ '+msg;b.classList.add('active');}}
@@ -1674,7 +1664,7 @@ function renderResults(soil, climate, items, lat, lng) {
 }
 
 // ─── MAIN ANALYSE ─────────────────────────────────────────────────
-async function analyseMyLand() {
+async function _fn_analyseMyLand() {
   clearError();
   if (!selectedLat||!selectedLng){showError('Please pin your farm on the map first.');return;}
 
@@ -1723,16 +1713,16 @@ async function analyseMyLand() {
 }
 
 // ─── PDF ──────────────────────────────────────────────────────────
-function downloadPDF(){const{jsPDF}=window.jspdf||{};if(!jsPDF){alert('PDF library loading — try again in a moment.');return;}if(!lastScored.length){alert('Please run an analysis first.');return;}const soil=lastSoil,climate=lastClimate,scored=lastScored,lat=selectedLat,lng=selectedLng;const doc=new jsPDF({unit:'mm',format:'a4'});const W=210,M=18;const GREEN=[44,107,54],DKGREEN=[26,58,30],LTGREEN=[168,196,138],INK=[26,34,16],MUTED=[100,120,80],GOLD=[180,130,20],RED=[180,60,40];let y=0;doc.setFillColor(...DKGREEN);doc.rect(0,0,W,42,'F');doc.setFillColor(...GREEN);doc.rect(0,40,W,2,'F');doc.setTextColor(232,213,160);doc.setFontSize(22);doc.setFont('helvetica','bold');doc.text('FarmIQ',M,16);doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...LTGREEN);doc.text('Land Intelligence Report',M,24);doc.text(`Generated: ${new Date().toLocaleDateString('en-ZA',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}`,M,31);const topScore=scored[0]?.score||0;const scoreCol=topScore>=70?GREEN:topScore>=45?GOLD:RED;doc.setFillColor(...scoreCol);doc.circle(W-M-14,20,14,'F');doc.setFillColor(...DKGREEN);doc.circle(W-M-14,20,10,'F');doc.setTextColor(...scoreCol);doc.setFontSize(14);doc.setFont('helvetica','bold');doc.text(String(topScore),W-M-14,17.5,{align:'center'});doc.setFontSize(6);doc.setFont('helvetica','normal');doc.text('/100',W-M-14,23,{align:'center'});doc.text('TOP SCORE',W-M-14,27.5,{align:'center'});y=52;doc.setTextColor(...INK);doc.setFontSize(13);doc.setFont('helvetica','bold');doc.text(`📍 ${lat.toFixed(5)}°S, ${lng.toFixed(5)}°E`,M,y);y+=7;doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...MUTED);doc.text(`Farm type: ${farmType==='crops'?'Crop Analysis':'Livestock Analysis'} · Soil: ${soil.source||'SA Regional'} · Climate: Open-Meteo ERA5`,M,y);y+=5;doc.setDrawColor(...GREEN);doc.setLineWidth(0.4);doc.line(M,y,W-M,y);y+=7;const boxH=52;doc.setFillColor(237,242,232);doc.roundedRect(M,y,82,boxH,3,3,'F');doc.setFontSize(7);doc.setFont('helvetica','bold');doc.setTextColor(...GREEN);doc.text('🛰️ SOIL DATA',M+4,y+6);doc.setTextColor(...MUTED);doc.text(soil.source||'SA Regional',M+4,y+11);doc.setFont('helvetica','normal');[[  'Soil Type',soil.soilType||'Sandy Clay Loam'],['pH (0–5cm)',soil.ph||'N/A'],['Organic C',soil.organic_carbon?soil.organic_carbon+' g/kg':'N/A'],['Clay / Sand',soil.clay_pct!=null&&soil.sand_pct!=null?`${soil.clay_pct}% / ${soil.sand_pct}%`:'N/A'],['Nitrogen',soil.nitrogen?soil.nitrogen+' g/kg':'N/A']].forEach(([k,v],i)=>{let ry=y+18+i*7;doc.setTextColor(...MUTED);doc.setFontSize(6.5);doc.text(k,M+4,ry);doc.setTextColor(...INK);doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.text(String(v),M+44,ry);doc.setFont('helvetica','normal');});doc.setFillColor(237,242,232);doc.roundedRect(M+86,y,82,boxH,3,3,'F');doc.setFontSize(7);doc.setFont('helvetica','bold');doc.setTextColor(...GREEN);doc.text('🌦️ CLIMATE (LIVE)',M+90,y+6);doc.setTextColor(...MUTED);doc.text('Open-Meteo ERA5/ECMWF',M+90,y+11);doc.setFont('helvetica','normal');[['Current Temp',climate.current_temp?climate.current_temp+'°C':'N/A'],['Avg Max (90d)',climate.avg_max_temp?climate.avg_max_temp+'°C':'N/A'],['Total Rain 90d',climate.total_precip_90d?climate.total_precip_90d+'mm':'N/A'],['Est. Annual',climate.annual_precip_est?climate.annual_precip_est+'mm':'N/A'],['ET₀ / Humidity',climate.et0&&climate.humidity?`${climate.et0}mm / ${climate.humidity}%`:'N/A']].forEach(([k,v],i)=>{let cy=y+18+i*7;doc.setTextColor(...MUTED);doc.setFontSize(6.5);doc.text(k,M+90,cy);doc.setTextColor(...INK);doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.text(String(v),M+130,cy);doc.setFont('helvetica','normal');});y+=boxH+10;doc.line(M,y-4,W-M,y-4);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...GREEN);doc.text(`${farmType==='crops'?'🌱 CROP':'🐄 LIVESTOCK'} SUITABILITY RANKINGS`,M,y);y+=7;scored.slice(0,8).forEach((item,i)=>{const score=item.score,barCol=score>=70?GREEN:score>=45?GOLD:RED,barW=60*(score/100);doc.setFillColor(245,250,242);doc.roundedRect(M,y-3,W-2*M,11,2,2,'F');doc.setFontSize(9);doc.text(item.emoji||'',M+2,y+4);doc.setTextColor(...INK);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text(item.label,M+10,y+4);doc.setFont('helvetica','normal');doc.setTextColor(...MUTED);doc.setFontSize(6.5);doc.text(item.factors.join(' · '),M+10,y+8.5);doc.setFillColor(220,230,215);doc.roundedRect(W-M-72,y,60,4,1,1,'F');doc.setFillColor(...barCol);doc.roundedRect(W-M-72,y,Math.max(barW,1),4,1,1,'F');doc.setTextColor(...barCol);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.text(`${score}/100`,W-M-8,y+5,{align:'right'});y+=13;if(y>260&&i<7){doc.addPage();doc.setFillColor(250,247,240);doc.rect(0,0,210,297,'F');y=20;}});y+=4;doc.line(M,y,W-M,y);y+=8;doc.setFillColor(...DKGREEN);doc.roundedRect(M,y,W-2*M,8,2,2,'F');doc.setTextColor(232,213,160);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text('🤖 AI FARM ADVISORY',M+4,y+5.5);y+=14;const advEl=document.getElementById('advisory-content');const advText=advEl?advEl.innerText.replace(/\n+/g,' ').trim():'Advisory not yet generated.';doc.setTextColor(...INK);doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setFillColor(245,250,242);doc.roundedRect(M,y-2,W-2*M,38,2,2,'F');doc.splitTextToSize(advText,W-2*M-8).slice(0,12).forEach(line=>{doc.text(line,M+4,y+4);y+=5;});doc.setFillColor(...DKGREEN);doc.rect(0,282,W,15,'F');doc.setFillColor(...GREEN);doc.rect(0,282,W,.8,'F');doc.setTextColor(...LTGREEN);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text('FarmIQ · farmiq.co.za · Real ISRIC + Open-Meteo + Claude AI',M,288);doc.setTextColor(150,180,130);doc.text('Recommendations are advisory only. Always consult a qualified agronomist.',M,293);doc.text(`Page 1 · ${new Date().getFullYear()}`,W-M,293,{align:'right'});doc.save(`FarmIQ_Report_${lat.toFixed(3)}_${lng.toFixed(3)}_${new Date().toISOString().slice(0,10)}.pdf`);}
+function _fn_downloadPDF(){const{jsPDF}=window.jspdf||{};if(!jsPDF){alert('PDF library loading — try again in a moment.');return;}if(!lastScored.length){alert('Please run an analysis first.');return;}const soil=lastSoil,climate=lastClimate,scored=lastScored,lat=selectedLat,lng=selectedLng;const doc=new jsPDF({unit:'mm',format:'a4'});const W=210,M=18;const GREEN=[44,107,54],DKGREEN=[26,58,30],LTGREEN=[168,196,138],INK=[26,34,16],MUTED=[100,120,80],GOLD=[180,130,20],RED=[180,60,40];let y=0;doc.setFillColor(...DKGREEN);doc.rect(0,0,W,42,'F');doc.setFillColor(...GREEN);doc.rect(0,40,W,2,'F');doc.setTextColor(232,213,160);doc.setFontSize(22);doc.setFont('helvetica','bold');doc.text('FarmIQ',M,16);doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...LTGREEN);doc.text('Land Intelligence Report',M,24);doc.text(`Generated: ${new Date().toLocaleDateString('en-ZA',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}`,M,31);const topScore=scored[0]?.score||0;const scoreCol=topScore>=70?GREEN:topScore>=45?GOLD:RED;doc.setFillColor(...scoreCol);doc.circle(W-M-14,20,14,'F');doc.setFillColor(...DKGREEN);doc.circle(W-M-14,20,10,'F');doc.setTextColor(...scoreCol);doc.setFontSize(14);doc.setFont('helvetica','bold');doc.text(String(topScore),W-M-14,17.5,{align:'center'});doc.setFontSize(6);doc.setFont('helvetica','normal');doc.text('/100',W-M-14,23,{align:'center'});doc.text('TOP SCORE',W-M-14,27.5,{align:'center'});y=52;doc.setTextColor(...INK);doc.setFontSize(13);doc.setFont('helvetica','bold');doc.text(`📍 ${lat.toFixed(5)}°S, ${lng.toFixed(5)}°E`,M,y);y+=7;doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...MUTED);doc.text(`Farm type: ${farmType==='crops'?'Crop Analysis':'Livestock Analysis'} · Soil: ${soil.source||'SA Regional'} · Climate: Open-Meteo ERA5`,M,y);y+=5;doc.setDrawColor(...GREEN);doc.setLineWidth(0.4);doc.line(M,y,W-M,y);y+=7;const boxH=52;doc.setFillColor(237,242,232);doc.roundedRect(M,y,82,boxH,3,3,'F');doc.setFontSize(7);doc.setFont('helvetica','bold');doc.setTextColor(...GREEN);doc.text('🛰️ SOIL DATA',M+4,y+6);doc.setTextColor(...MUTED);doc.text(soil.source||'SA Regional',M+4,y+11);doc.setFont('helvetica','normal');[[  'Soil Type',soil.soilType||'Sandy Clay Loam'],['pH (0–5cm)',soil.ph||'N/A'],['Organic C',soil.organic_carbon?soil.organic_carbon+' g/kg':'N/A'],['Clay / Sand',soil.clay_pct!=null&&soil.sand_pct!=null?`${soil.clay_pct}% / ${soil.sand_pct}%`:'N/A'],['Nitrogen',soil.nitrogen?soil.nitrogen+' g/kg':'N/A']].forEach(([k,v],i)=>{let ry=y+18+i*7;doc.setTextColor(...MUTED);doc.setFontSize(6.5);doc.text(k,M+4,ry);doc.setTextColor(...INK);doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.text(String(v),M+44,ry);doc.setFont('helvetica','normal');});doc.setFillColor(237,242,232);doc.roundedRect(M+86,y,82,boxH,3,3,'F');doc.setFontSize(7);doc.setFont('helvetica','bold');doc.setTextColor(...GREEN);doc.text('🌦️ CLIMATE (LIVE)',M+90,y+6);doc.setTextColor(...MUTED);doc.text('Open-Meteo ERA5/ECMWF',M+90,y+11);doc.setFont('helvetica','normal');[['Current Temp',climate.current_temp?climate.current_temp+'°C':'N/A'],['Avg Max (90d)',climate.avg_max_temp?climate.avg_max_temp+'°C':'N/A'],['Total Rain 90d',climate.total_precip_90d?climate.total_precip_90d+'mm':'N/A'],['Est. Annual',climate.annual_precip_est?climate.annual_precip_est+'mm':'N/A'],['ET₀ / Humidity',climate.et0&&climate.humidity?`${climate.et0}mm / ${climate.humidity}%`:'N/A']].forEach(([k,v],i)=>{let cy=y+18+i*7;doc.setTextColor(...MUTED);doc.setFontSize(6.5);doc.text(k,M+90,cy);doc.setTextColor(...INK);doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.text(String(v),M+130,cy);doc.setFont('helvetica','normal');});y+=boxH+10;doc.line(M,y-4,W-M,y-4);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...GREEN);doc.text(`${farmType==='crops'?'🌱 CROP':'🐄 LIVESTOCK'} SUITABILITY RANKINGS`,M,y);y+=7;scored.slice(0,8).forEach((item,i)=>{const score=item.score,barCol=score>=70?GREEN:score>=45?GOLD:RED,barW=60*(score/100);doc.setFillColor(245,250,242);doc.roundedRect(M,y-3,W-2*M,11,2,2,'F');doc.setFontSize(9);doc.text(item.emoji||'',M+2,y+4);doc.setTextColor(...INK);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text(item.label,M+10,y+4);doc.setFont('helvetica','normal');doc.setTextColor(...MUTED);doc.setFontSize(6.5);doc.text(item.factors.join(' · '),M+10,y+8.5);doc.setFillColor(220,230,215);doc.roundedRect(W-M-72,y,60,4,1,1,'F');doc.setFillColor(...barCol);doc.roundedRect(W-M-72,y,Math.max(barW,1),4,1,1,'F');doc.setTextColor(...barCol);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.text(`${score}/100`,W-M-8,y+5,{align:'right'});y+=13;if(y>260&&i<7){doc.addPage();doc.setFillColor(250,247,240);doc.rect(0,0,210,297,'F');y=20;}});y+=4;doc.line(M,y,W-M,y);y+=8;doc.setFillColor(...DKGREEN);doc.roundedRect(M,y,W-2*M,8,2,2,'F');doc.setTextColor(232,213,160);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text('🤖 AI FARM ADVISORY',M+4,y+5.5);y+=14;const advEl=document.getElementById('advisory-content');const advText=advEl?advEl.innerText.replace(/\n+/g,' ').trim():'Advisory not yet generated.';doc.setTextColor(...INK);doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setFillColor(245,250,242);doc.roundedRect(M,y-2,W-2*M,38,2,2,'F');doc.splitTextToSize(advText,W-2*M-8).slice(0,12).forEach(line=>{doc.text(line,M+4,y+4);y+=5;});doc.setFillColor(...DKGREEN);doc.rect(0,282,W,15,'F');doc.setFillColor(...GREEN);doc.rect(0,282,W,.8,'F');doc.setTextColor(...LTGREEN);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text('FarmIQ · farmiq.co.za · Real ISRIC + Open-Meteo + Claude AI',M,288);doc.setTextColor(150,180,130);doc.text('Recommendations are advisory only. Always consult a qualified agronomist.',M,293);doc.text(`Page 1 · ${new Date().getFullYear()}`,W-M,293,{align:'right'});doc.save(`FarmIQ_Report_${lat.toFixed(3)}_${lng.toFixed(3)}_${new Date().toISOString().slice(0,10)}.pdf`);}
 
 // ─── WHATSAPP ─────────────────────────────────────────────────────
-function shareWhatsApp(){if(!lastScored.length)return;const top3=lastScored.slice(0,3).map(i=>`${i.emoji} ${i.label}(${i.score}/100)`).join(', ');const msg=`🌿 *FarmIQ Land Report*\n\n📍 ${selectedLat.toFixed(4)}°, ${selectedLng.toFixed(4)}°\n🪨 ${lastSoil.soilType||'N/A'} · pH ${lastSoil.ph||'N/A'}\n🌡️ ${lastClimate.current_temp||'N/A'}°C · ${lastClimate.total_precip_90d||'N/A'}mm/90d\n\n🏆 Top: ${top3}\n\n_farmiq.co.za_`;window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,'_blank');}
+function _fn_shareWhatsApp(){if(!lastScored.length)return;const top3=lastScored.slice(0,3).map(i=>`${i.emoji} ${i.label}(${i.score}/100)`).join(', ');const msg=`🌿 *FarmIQ Land Report*\n\n📍 ${selectedLat.toFixed(4)}°, ${selectedLng.toFixed(4)}°\n🪨 ${lastSoil.soilType||'N/A'} · pH ${lastSoil.ph||'N/A'}\n🌡️ ${lastClimate.current_temp||'N/A'}°C · ${lastClimate.total_precip_90d||'N/A'}mm/90d\n\n🏆 Top: ${top3}\n\n_farmiq.co.za_`;window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,'_blank');}
 
 // ─── RESET ────────────────────────────────────────────────────────
-function resetAnalysis(){document.getElementById('results-section').classList.remove('active');const s=document.getElementById('share-row');if(s)s.style.display='none';document.getElementById('analyser')?.scrollIntoView({behavior:'smooth'});}
+function _fn_resetAnalysis(){document.getElementById('results-section').classList.remove('active');const s=document.getElementById('share-row');if(s)s.style.display='none';document.getElementById('analyser')?.scrollIntoView({behavior:'smooth'});}
 
 // ─── PAYGATE (stub — replace with real PayFast) ───────────────────
-function openPaygate(plan){}  // placeholder
+function _fn_openPaygate(plan){}  // placeholder
 
 // ─── SCROLL OBSERVER ──────────────────────────────────────────────
 function initScrollObserver(){const obs=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');}),{threshold:.15});document.querySelectorAll('.fade-in-up').forEach(el=>obs.observe(el));}
