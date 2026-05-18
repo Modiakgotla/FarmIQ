@@ -1178,7 +1178,7 @@ async function doForgotPassword() {
   const em = prompt('Enter your email address to reset your password:');
   if (!em) return;
   const { error } = await sb.auth.resetPasswordForEmail(em, {
-    redirectTo: window.location.origin + '/?reset=true',
+    redirectTo: 'https://farmiq1.vercel.app',
   });
   if (error) showToast(error.message, 'error');
   else showToast('Password reset email sent! Check your inbox.', 'success');
@@ -1702,6 +1702,62 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   // Flush any onclick calls that fired before this script finished loading
 });
+
+// ─── PASSWORD RESET ───────────────────────────────────────────────
+async function doResetPassword() {
+  const pw  = document.getElementById('reset-pw')?.value;
+  const pw2 = document.getElementById('reset-pw-confirm')?.value;
+  const err = document.getElementById('reset-error');
+  const btn = document.getElementById('reset-btn');
+
+  if (!pw || pw.length < 8) {
+    if (err) { err.textContent = '⚠️ Password must be at least 8 characters.'; err.style.display = 'block'; }
+    return;
+  }
+  if (pw !== pw2) {
+    if (err) { err.textContent = '⚠️ Passwords do not match.'; err.style.display = 'block'; }
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Updating...'; }
+
+  try {
+    const { error } = await sb.auth.updateUser({ password: pw });
+    if (error) {
+      if (err) { err.textContent = '⚠️ ' + error.message; err.style.display = 'block'; }
+    } else {
+      closeM('resetPasswordM');
+      showToast('Password updated successfully! You are now signed in.', 'success');
+      // Clear the hash from URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  } catch(e) {
+    if (err) { err.textContent = '⚠️ Connection failed. Please try again.'; err.style.display = 'block'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Set New Password'; }
+  }
+}
+
+// Detect password recovery session on page load
+sb.auth.onAuthStateChange((event, session) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    // User clicked the reset link in their email — show the reset form
+    openM('resetPasswordM');
+  }
+});
 </script>
+
+<!-- ══ RESET PASSWORD MODAL ══ -->
+<div class="overlay" id="resetPasswordM" style="display:none;position:fixed;inset:0;z-index:2001;background:rgba(26,34,16,.7);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:1.5rem;">
+<div style="background:white;border-radius:16px;width:100%;max-width:400px;padding:2rem;position:relative;box-shadow:0 24px 80px rgba(26,34,16,.2);">
+  <h2 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;color:var(--earth);margin-bottom:.25rem;">Set new password</h2>
+  <p style="font-size:.8rem;color:rgba(26,34,16,.5);margin-bottom:1.25rem;">Enter your new password below.</p>
+  <label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">New Password</label>
+  <input id="reset-pw" type="password" placeholder="At least 8 characters" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);margin-bottom:.75rem;">
+  <label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Confirm Password</label>
+  <input id="reset-pw-confirm" type="password" placeholder="Repeat your new password" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);margin-bottom:.75rem;">
+  <div id="reset-error" style="display:none;color:var(--rust);font-size:.8rem;padding:.5rem .75rem;background:rgba(192,97,43,.08);border-radius:6px;margin-bottom:.75rem;"></div>
+  <button id="reset-btn" onclick="setTimeout(function(){doResetPassword()},0)" style="width:100%;padding:.85rem;background:var(--sage);color:var(--ink);border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;">Set New Password</button>
+</div></div>
 </body>
 </html>
