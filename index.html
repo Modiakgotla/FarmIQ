@@ -879,7 +879,15 @@
     <div><label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Last Name</label><input class="fi" id="sln" placeholder="Khumalo" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);margin-bottom:0;"></div>
   </div>
   <div style="margin-top:.75rem;"><label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Email</label><input id="sem" type="email" placeholder="you@farm.co.za" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);"></div>
-  <div style="margin-top:.75rem;"><label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Password</label><input id="spw" type="password" placeholder="At least 8 characters" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);"></div>
+  <div style="margin-top:.75rem;">
+    <label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Password</label>
+    <div style="position:relative;">
+      <input id="spw" type="password" placeholder="At least 8 characters" style="width:100%;padding:.65rem 2.5rem .65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);">
+      <button type="button" onclick="togglePwVisibility('spw','eye-spw')" id="eye-spw" style="position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:rgba(44,58,30,.4);padding:0;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+  </div>
   <div style="margin-top:.75rem;"><label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Phone (for SMS reports)</label><input id="sph" type="tel" placeholder="+27 82 123 4567" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);"></div>
   <div style="margin-top:.75rem;margin-bottom:1rem;"><label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Province</label>
     <select id="sprov" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);"><option value="">Select province</option><option>Gauteng</option><option>Limpopo</option><option>Mpumalanga</option><option>North West</option><option>Free State</option><option>KwaZulu-Natal</option><option>Northern Cape</option><option>Western Cape</option><option>Eastern Cape</option></select>
@@ -898,7 +906,12 @@
   <label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Email</label>
   <input id="lem" type="email" placeholder="your@email.co.za" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);margin-bottom:.75rem;">
   <label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Password</label>
-  <input id="lpw" type="password" placeholder="Your password" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);margin-bottom:.5rem;">
+  <div style="position:relative;margin-bottom:.5rem;">
+    <input id="lpw" type="password" placeholder="Your password" style="width:100%;padding:.65rem 2.5rem .65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);">
+    <button type="button" onclick="togglePwVisibility('lpw','eye-lpw')" id="eye-lpw" style="position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:rgba(44,58,30,.4);padding:0;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+  </div>
   <p style="text-align:right;margin-bottom:1rem;"><a onclick="setTimeout(function(){doForgotPassword()},0)" style="font-size:.75rem;color:var(--sage);cursor:pointer;">Forgot password?</a></p>
   <div id="login-error" style="display:none;color:var(--rust);font-size:.8rem;padding:.5rem .75rem;background:rgba(192,97,43,.08);border-radius:6px;margin-bottom:.75rem;"></div>
   <button onclick="setTimeout(function(){doLogin()},0)" id="login-btn" style="width:100%;padding:.85rem;background:var(--sage);color:var(--ink);border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;margin-bottom:.75rem;">Sign In →</button>
@@ -937,6 +950,18 @@
 function openM(id){var el=document.getElementById(id);if(el){el.classList.add('on');el.style.display='flex';}var e=document.getElementById(id==='signupM'?'signup-error':id==='loginM'?'login-error':'x');if(e)e.style.display='none';}
 function closeM(id){var el=document.getElementById(id);if(el){el.classList.remove('on');el.style.display='none';}}
 function swapM(a,b){closeM(a);openM(b);}
+function togglePwVisibility(inputId,btnId){
+  var input=document.getElementById(inputId);
+  var btn=document.getElementById(btnId);
+  if(!input)return;
+  var show=input.type==='password';
+  input.type=show?'text':'password';
+  if(btn){
+    btn.innerHTML=show
+      ? '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+      : '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  }
+}
 </script>
 <style>.overlay.on{display:flex!important;} @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}} @keyframes spin{to{transform:rotate(360deg)}}</style>
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
@@ -1071,8 +1096,13 @@ let lastSoil = {}, lastClimate = {}, lastScored = [];
 sb.auth.onAuthStateChange(async (event, session) => {
   currentUser = session?.user ?? null;
 
+  if (event === 'PASSWORD_RECOVERY') {
+    // User clicked the reset link — show the set new password form
+    openM('resetPasswordM');
+    return;
+  }
+
   if (currentUser) {
-    // Load profile from DB
     const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
     currentProfile = data;
     updateNavForLoggedIn();
@@ -1175,16 +1205,56 @@ async function doLogout() {
 }
 
 async function doForgotPassword() {
-  const em = prompt('Enter your email address to reset your password:');
+  const existingEmail = document.getElementById('lem')?.value.trim();
+  const em = existingEmail || prompt('Enter your email address:');
   if (!em) return;
-  const { error } = await sb.auth.resetPasswordForEmail(em, {
-    redirectTo: 'https://farmiq1.vercel.app',
-  });
-  if (error) showToast(error.message, 'error');
-  else showToast('Password reset email sent! Check your inbox.', 'success');
+
+  if (!em.includes('@') || !em.includes('.')) {
+    showFormError('loginM', 'Please enter a valid email address.');
+    return;
+  }
+
+  const forgotLink = document.querySelector('[onclick*="doForgotPassword"]');
+  if (forgotLink) { forgotLink.textContent = 'Sending...'; forgotLink.style.pointerEvents = 'none'; }
+
+  try {
+    // Check if email exists in profiles via a safe RPC call
+    const { data: profile } = await sb
+      .from('profiles')
+      .select('id')
+      .limit(1)
+      .single();
+
+    // Direct approach — send reset email and let Supabase handle it
+    // If user doesn't exist, Supabase silently does nothing (security by design)
+    // We check existence via profiles table first
+    const { data: userCheck } = await sb.rpc('check_email_exists', { email_to_check: em });
+
+    if (!userCheck) {
+      showFormError('loginM', 'No FarmIQ account found for ' + em + '. Please sign up first.');
+      return;
+    }
+
+    const { error } = await sb.auth.resetPasswordForEmail(em, {
+      redirectTo: 'https://farmiq1.vercel.app/?type=recovery',
+    });
+
+    if (error) {
+      showFormError('loginM', error.message.includes('seconds')
+        ? 'Please wait a minute before requesting another reset email.'
+        : 'Error: ' + error.message);
+    } else {
+      closeM('loginM');
+      showToast('Reset email sent to ' + em + ' — check your inbox and spam folder.', 'success');
+    }
+  } catch(e) {
+    showFormError('loginM', 'Connection failed. Please try again.');
+  } finally {
+    if (forgotLink) { forgotLink.textContent = 'Forgot password?'; forgotLink.style.pointerEvents = ''; }
+  }
 }
 
-// Demo mode — creates an anonymous guest session so the UI works without signup
+
 async function demoGo() {
   closeM('loginM'); closeM('signupM');
   // Use a fake local user object for demo — no Supabase call, no DB writes
@@ -1469,6 +1539,18 @@ function openM(id){
 }
 function closeM(id){document.getElementById(id)?.classList.remove('on');}
 function swapM(a,b){closeM(a);openM(b);}
+function togglePwVisibility(inputId,btnId){
+  var input=document.getElementById(inputId);
+  var btn=document.getElementById(btnId);
+  if(!input)return;
+  var show=input.type==='password';
+  input.type=show?'text':'password';
+  if(btn){
+    btn.innerHTML=show
+      ? '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+      : '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  }
+}
 document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('on');}));});
 
 function showFormError(modalId, msg) {
@@ -1694,6 +1776,8 @@ document.addEventListener('DOMContentLoaded', () => {
   buildChips();
   initScrollObserver();
   updateUsageBar();
+  // Check if user arrived via password reset link
+  checkPasswordRecovery();
   // Restore session on page load
   if (typeof sb !== 'undefined') {
     sb.auth.getSession().then(({ data }) => {
@@ -1710,54 +1794,118 @@ async function doResetPassword() {
   const err = document.getElementById('reset-error');
   const btn = document.getElementById('reset-btn');
 
+  // Clear previous errors
+  if (err) err.style.display = 'none';
+
   if (!pw || pw.length < 8) {
     if (err) { err.textContent = '⚠️ Password must be at least 8 characters.'; err.style.display = 'block'; }
     return;
   }
   if (pw !== pw2) {
-    if (err) { err.textContent = '⚠️ Passwords do not match.'; err.style.display = 'block'; }
+    if (err) { err.textContent = '⚠️ Passwords do not match — please check and try again.'; err.style.display = 'block'; }
     return;
   }
 
   if (btn) { btn.disabled = true; btn.textContent = 'Updating...'; }
 
   try {
+    // Ensure we have an active session from the recovery token in the URL hash
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+      const hashParams = new URLSearchParams(hash.substring(1));
+      const accessToken  = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token') || '';
+      if (accessToken) {
+        const { error: sessionError } = await sb.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
+        });
+        if (sessionError) {
+          if (err) { err.textContent = '⚠️ Reset link has expired. Please request a new one.'; err.style.display = 'block'; }
+          if (btn) { btn.disabled = false; btn.textContent = 'Set New Password'; }
+          return;
+        }
+      }
+    }
+
+    // Now update the password
     const { error } = await sb.auth.updateUser({ password: pw });
+
     if (error) {
-      if (err) { err.textContent = '⚠️ ' + error.message; err.style.display = 'block'; }
+      if (err) {
+        err.textContent = error.message.includes('expired')
+          ? '⚠️ Reset link has expired. Please request a new password reset.'
+          : '⚠️ ' + error.message;
+        err.style.display = 'block';
+      }
     } else {
+      // Success
       closeM('resetPasswordM');
-      showToast('Password updated successfully! You are now signed in.', 'success');
-      // Clear the hash from URL
+      // Clean URL
       window.history.replaceState({}, document.title, window.location.pathname);
+      showToast('✅ Password updated successfully! You are now signed in.', 'success');
     }
   } catch(e) {
-    if (err) { err.textContent = '⚠️ Connection failed. Please try again.'; err.style.display = 'block'; }
+    console.error('Reset error:', e);
+    if (err) { err.textContent = '⚠️ Connection failed. Please check your internet and try again.'; err.style.display = 'block'; }
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Set New Password'; }
   }
 }
 
-// Detect password recovery session on page load
-sb.auth.onAuthStateChange((event, session) => {
-  if (event === 'PASSWORD_RECOVERY') {
-    // User clicked the reset link in their email — show the reset form
+// Detect password recovery from URL hash on page load
+// Supabase injects #access_token=...&type=recovery into the URL
+function checkPasswordRecovery() {
+  const hash = window.location.hash;
+  const params = new URLSearchParams(window.location.search);
+  if (hash.includes('type=recovery') || params.get('type') === 'recovery') {
+    // Parse token from hash if present
+    if (hash) {
+      const hashParams = new URLSearchParams(hash.substring(1));
+      const accessToken  = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      if (accessToken) {
+        sb.auth.setSession({ access_token: accessToken, refresh_token: refreshToken || '' })
+          .then(() => openM('resetPasswordM'));
+        return;
+      }
+    }
     openM('resetPasswordM');
   }
-});
+}
 </script>
 
 <!-- ══ RESET PASSWORD MODAL ══ -->
 <div class="overlay" id="resetPasswordM" style="display:none;position:fixed;inset:0;z-index:2001;background:rgba(26,34,16,.7);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:1.5rem;">
-<div style="background:white;border-radius:16px;width:100%;max-width:400px;padding:2rem;position:relative;box-shadow:0 24px 80px rgba(26,34,16,.2);">
+<div style="background:white;border-radius:16px;width:100%;max-width:420px;padding:2rem;position:relative;box-shadow:0 24px 80px rgba(26,34,16,.2);">
   <h2 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;color:var(--earth);margin-bottom:.25rem;">Set new password</h2>
-  <p style="font-size:.8rem;color:rgba(26,34,16,.5);margin-bottom:1.25rem;">Enter your new password below.</p>
+  <p style="font-size:.8rem;color:rgba(26,34,16,.5);margin-bottom:1.5rem;">Enter and confirm your new password below.</p>
+
   <label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">New Password</label>
-  <input id="reset-pw" type="password" placeholder="At least 8 characters" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);margin-bottom:.75rem;">
-  <label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Confirm Password</label>
-  <input id="reset-pw-confirm" type="password" placeholder="Repeat your new password" style="width:100%;padding:.65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);margin-bottom:.75rem;">
-  <div id="reset-error" style="display:none;color:var(--rust);font-size:.8rem;padding:.5rem .75rem;background:rgba(192,97,43,.08);border-radius:6px;margin-bottom:.75rem;"></div>
-  <button id="reset-btn" onclick="setTimeout(function(){doResetPassword()},0)" style="width:100%;padding:.85rem;background:var(--sage);color:var(--ink);border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;">Set New Password</button>
+  <div style="position:relative;margin-bottom:.75rem;">
+    <input id="reset-pw" type="password" placeholder="At least 8 characters"
+      style="width:100%;padding:.65rem 2.5rem .65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);">
+    <button type="button" onclick="togglePwVisibility('reset-pw','reset-eye-1')"
+      style="position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:rgba(44,58,30,.4);padding:0;line-height:1;" id="reset-eye-1">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+  </div>
+
+  <label style="font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(26,34,16,.5);display:block;margin-bottom:.3rem;">Confirm New Password</label>
+  <div style="position:relative;margin-bottom:.75rem;">
+    <input id="reset-pw-confirm" type="password" placeholder="Repeat your new password"
+      style="width:100%;padding:.65rem 2.5rem .65rem .85rem;border:1px solid rgba(44,58,30,.2);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);">
+    <button type="button" onclick="togglePwVisibility('reset-pw-confirm','reset-eye-2')"
+      style="position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:rgba(44,58,30,.4);padding:0;line-height:1;" id="reset-eye-2">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+  </div>
+
+  <div id="reset-error" style="display:none;color:var(--rust);font-size:.8rem;padding:.5rem .75rem;background:rgba(192,97,43,.08);border-radius:6px;margin-bottom:.75rem;border-left:3px solid var(--rust);"></div>
+  <button id="reset-btn" onclick="setTimeout(function(){doResetPassword()},0)"
+    style="width:100%;padding:.85rem;background:var(--sage);color:var(--ink);border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .2s;">
+    🔒 Set New Password
+  </button>
 </div></div>
 </body>
 </html>
